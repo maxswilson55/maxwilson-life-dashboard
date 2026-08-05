@@ -109,7 +109,7 @@ function renderTaskItem(task) {
   const node = template.content.firstElementChild.cloneNode(true);
   node.dataset.id = task.id;
   node.classList.toggle("is-done", task.done);
-  node.classList.add(`priority-${task.priority}`);
+  node.dataset.priority = task.priority;
 
   const checkbox = node.querySelector('input[type="checkbox"]');
   checkbox.checked = task.done;
