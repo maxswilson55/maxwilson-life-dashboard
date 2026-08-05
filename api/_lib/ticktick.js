@@ -30,7 +30,8 @@ async function ttFetch(accessToken, path) {
   return res.json();
 }
 
-const PRIORITY_MAP = { 0: "low", 1: "low", 3: "medium", 5: "high" };
+// TickTick priority: 0 = unset (treated as neutral "medium"), 1 = Low, 3 = Medium, 5 = High
+const PRIORITY_MAP = { 0: "medium", 1: "low", 3: "medium", 5: "high" };
 
 export async function findOpenTasks(accessToken) {
   const projects = await ttFetch(accessToken, "/project");
