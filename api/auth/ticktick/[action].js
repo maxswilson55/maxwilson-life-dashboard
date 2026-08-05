@@ -1,8 +1,30 @@
+import crypto from "node:crypto";
 import { parseCookies } from "../../_lib/cookies.js";
 import { encrypt } from "../../_lib/crypto.js";
 import { exchangeCode } from "../../_lib/ticktick.js";
 
-export default async function handler(req, res) {
+function start(req, res) {
+  const redirectUri = `https://${req.headers.host}/api/auth/ticktick/callback`;
+  const state = crypto.randomUUID();
+
+  res.setHeader(
+    "Set-Cookie",
+    `tt_oauth_state=${state}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=600`
+  );
+
+  const params = new URLSearchParams({
+    client_id: process.env.TICKTICK_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "tasks:read",
+    state,
+  });
+
+  res.writeHead(302, { Location: `https://ticktick.com/oauth/authorize?${params}` });
+  res.end();
+}
+
+async function callback(req, res) {
   const url = new URL(req.url, `https://${req.headers.host}`);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -35,4 +57,29 @@ export default async function handler(req, res) {
   ]);
   res.writeHead(302, { Location: "/?ticktick=connected" });
   res.end();
+}
+
+function status(req, res) {
+  const cookies = parseCookies(req.headers.cookie);
+  res.status(200).json({ connected: Boolean(cookies.tt_at) });
+}
+
+function disconnect(req, res) {
+  res.setHeader("Set-Cookie", "tt_at=; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=0");
+  res.status(200).json({ ok: true });
+}
+
+export default async function handler(req, res) {
+  switch (req.query.action) {
+    case "start":
+      return start(req, res);
+    case "callback":
+      return callback(req, res);
+    case "status":
+      return status(req, res);
+    case "disconnect":
+      return disconnect(req, res);
+    default:
+      res.status(404).end();
+  }
 }
