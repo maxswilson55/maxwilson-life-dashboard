@@ -84,6 +84,16 @@
       <ul class="task-list" id="gmail-suggestions"></ul>
     </section>
 
+    <section class="gmail-section" id="ticktick-section">
+      <div class="gmail-header">
+        <h2>✅ TickTick</h2>
+        <button id="ticktick-connect-btn" class="gmail-connect-btn" hidden>Connect TickTick</button>
+        <button id="ticktick-refresh-btn" class="link-btn" hidden>Refresh</button>
+      </div>
+      <p class="empty-hint" id="ticktick-hint">Connect TickTick to see your open tasks here.</p>
+      <ul class="task-list" id="ticktick-suggestions"></ul>
+    </section>
+
     <section class="completed-section">
       <button id="toggle-completed" class="link-btn" aria-expanded="false">Show completed (<span id="completed-count">0</span>)</button>
       <ul class="task-list" id="list-completed" hidden></ul>
@@ -121,6 +131,25 @@
         <div class="task-meta">
           <span class="gmail-from"></span>
           <a class="gmail-open-link" target="_blank" rel="noopener">Open in Gmail</a>
+        </div>
+      </div>
+      <div class="gmail-actions">
+        <button class="gmail-add-btn" type="button">+ Add as task</button>
+        <button class="gmail-dismiss-btn" type="button" title="Dismiss" aria-label="Dismiss">×</button>
+      </div>
+    </li>
+  </template>
+
+  <template id="ticktick-item-template">
+    <li class="task gmail-item">
+      <span class="priority-badge"></span>
+      <div class="task-body">
+        <div class="task-title-row">
+          <span class="task-title tt-title"></span>
+        </div>
+        <div class="task-meta">
+          <span class="tt-project"></span>
+          <a class="gmail-open-link" target="_blank" rel="noopener">Open in TickTick</a>
         </div>
       </div>
       <div class="gmail-actions">

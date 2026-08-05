@@ -385,6 +385,102 @@ fetch("/api/auth/google/status")
     gmailHint.textContent = "Gmail integration isn't set up on this deployment yet.";
   });
 
+const ticktickTemplate = document.getElementById("ticktick-item-template");
+const ticktickList = document.getElementById("ticktick-suggestions");
+const ticktickHint = document.getElementById("ticktick-hint");
+const ticktickConnectBtn = document.getElementById("ticktick-connect-btn");
+const ticktickRefreshBtn = document.getElementById("ticktick-refresh-btn");
+const dismissedTicktickTasks = new Set(
+  JSON.parse(localStorage.getItem("lifeDashboard.ticktickDismissed.v1") || "[]")
+);
+
+function saveDismissedTicktick() {
+  localStorage.setItem("lifeDashboard.ticktickDismissed.v1", JSON.stringify([...dismissedTicktickTasks]));
+}
+
+function renderTicktickItem(item) {
+  const node = ticktickTemplate.content.firstElementChild.cloneNode(true);
+  node.dataset.taskId = item.id;
+
+  const badge = node.querySelector(".priority-badge");
+  badge.textContent = `${PRIORITY_EMOJI[item.priority]} ${item.priority}`;
+  badge.classList.add(`priority-${item.priority}`);
+
+  node.querySelector(".tt-title").textContent = item.title;
+  node.querySelector(".tt-project").textContent = item.projectName;
+  node.querySelector(".gmail-open-link").href = item.link;
+
+  node.querySelector(".gmail-add-btn").addEventListener("click", (e) => {
+    addTask({
+      title: item.title,
+      category: "work",
+      priority: item.priority,
+      due: item.due || "",
+      notes: `From TickTick (${item.projectName}) — ${item.link}`,
+    });
+    e.target.textContent = "Added ✓";
+    e.target.classList.add("is-added");
+  });
+
+  node.querySelector(".gmail-dismiss-btn").addEventListener("click", () => {
+    dismissedTicktickTasks.add(item.id);
+    saveDismissedTicktick();
+    node.remove();
+  });
+
+  return node;
+}
+
+async function loadTicktickSuggestions() {
+  ticktickHint.textContent = "Checking TickTick…";
+  ticktickHint.hidden = false;
+  ticktickList.innerHTML = "";
+  try {
+    const res = await fetch("/api/ticktick/tasks");
+    if (res.status === 401) {
+      ticktickHint.textContent = "Connect TickTick to see your open tasks here.";
+      ticktickConnectBtn.hidden = false;
+      ticktickRefreshBtn.hidden = true;
+      return;
+    }
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const { tasks } = await res.json();
+    const visible = tasks.filter((t) => !dismissedTicktickTasks.has(t.id));
+    ticktickConnectBtn.hidden = true;
+    ticktickRefreshBtn.hidden = false;
+    if (visible.length === 0) {
+      ticktickHint.textContent = "Nothing open in TickTick right now.";
+      ticktickHint.hidden = false;
+    } else {
+      ticktickHint.hidden = true;
+      visible.forEach((item) => ticktickList.appendChild(renderTicktickItem(item)));
+    }
+  } catch (err) {
+    console.error("TickTick suggestions failed", err);
+    ticktickHint.textContent = "Couldn't reach TickTick right now. Try refreshing.";
+    ticktickHint.hidden = false;
+    ticktickRefreshBtn.hidden = false;
+  }
+}
+
+ticktickConnectBtn.addEventListener("click", () => {
+  window.location.href = "/api/auth/ticktick/start";
+});
+ticktickRefreshBtn.addEventListener("click", loadTicktickSuggestions);
+
+fetch("/api/auth/ticktick/status")
+  .then((r) => r.json())
+  .then(({ connected }) => {
+    if (connected) {
+      loadTicktickSuggestions();
+    } else {
+      ticktickConnectBtn.hidden = false;
+    }
+  })
+  .catch(() => {
+    ticktickHint.textContent = "TickTick integration isn't set up on this deployment yet.";
+  });
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("service-worker.js").catch((err) => {
