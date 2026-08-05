@@ -481,6 +481,85 @@ fetch("/api/auth/ticktick/status")
     ticktickHint.textContent = "TickTick integration isn't set up on this deployment yet.";
   });
 
+const calendarTemplate = document.getElementById("calendar-item-template");
+const calendarList = document.getElementById("calendar-events");
+const calendarHint = document.getElementById("calendar-hint");
+const calendarConnectBtn = document.getElementById("calendar-connect-btn");
+const calendarRefreshBtn = document.getElementById("calendar-refresh-btn");
+
+function renderCalendarItem(event) {
+  const node = calendarTemplate.content.firstElementChild.cloneNode(true);
+
+  const start = new Date(event.start);
+  const dateLabel = formatDue(toISO(start)) || start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const timeLabel = event.allDay
+    ? "All day"
+    : start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  node.querySelector(".cal-time").textContent = `${dateLabel}, ${timeLabel}`;
+
+  node.querySelector(".cal-title").textContent = event.title;
+
+  const locationEl = node.querySelector(".cal-location");
+  if (event.location) {
+    locationEl.textContent = event.location;
+  } else {
+    locationEl.remove();
+  }
+
+  node.querySelector(".gmail-open-link").href = event.link;
+
+  return node;
+}
+
+async function loadCalendarEvents() {
+  calendarHint.textContent = "Checking calendar…";
+  calendarHint.hidden = false;
+  calendarList.innerHTML = "";
+  try {
+    const res = await fetch("/api/calendar/events");
+    if (res.status === 401) {
+      calendarHint.textContent = "Connect Google Calendar to see today's and upcoming events here.";
+      calendarConnectBtn.hidden = false;
+      calendarRefreshBtn.hidden = true;
+      return;
+    }
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const { events } = await res.json();
+    calendarConnectBtn.hidden = true;
+    calendarRefreshBtn.hidden = false;
+    if (events.length === 0) {
+      calendarHint.textContent = "Nothing on your calendar for the next 7 days.";
+      calendarHint.hidden = false;
+    } else {
+      calendarHint.hidden = true;
+      events.forEach((event) => calendarList.appendChild(renderCalendarItem(event)));
+    }
+  } catch (err) {
+    console.error("Calendar events failed", err);
+    calendarHint.textContent = "Couldn't reach Calendar right now. Try refreshing.";
+    calendarHint.hidden = false;
+    calendarRefreshBtn.hidden = false;
+  }
+}
+
+calendarConnectBtn.addEventListener("click", () => {
+  window.location.href = "/api/auth/gcal/start";
+});
+calendarRefreshBtn.addEventListener("click", loadCalendarEvents);
+
+fetch("/api/auth/gcal/status")
+  .then((r) => r.json())
+  .then(({ connected }) => {
+    if (connected) {
+      loadCalendarEvents();
+    } else {
+      calendarConnectBtn.hidden = false;
+    }
+  })
+  .catch(() => {
+    calendarHint.textContent = "Calendar integration isn't set up on this deployment yet.";
+  });
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("service-worker.js").catch((err) => {

@@ -54,6 +54,16 @@
       </form>
     </section>
 
+    <section class="gmail-section" id="calendar-section">
+      <div class="gmail-header">
+        <h2>📅 Schedule</h2>
+        <button id="calendar-connect-btn" class="gmail-connect-btn" hidden>Connect Calendar</button>
+        <button id="calendar-refresh-btn" class="link-btn" hidden>Refresh</button>
+      </div>
+      <p class="empty-hint" id="calendar-hint">Connect Google Calendar to see today's and upcoming events here.</p>
+      <ul class="task-list" id="calendar-events"></ul>
+    </section>
+
     <section class="board" id="board">
       <div class="column" id="col-today">
         <h2>Today &amp; Overdue</h2>
@@ -155,6 +165,21 @@
       <div class="gmail-actions">
         <button class="gmail-add-btn" type="button">+ Add as task</button>
         <button class="gmail-dismiss-btn" type="button" title="Dismiss" aria-label="Dismiss">×</button>
+      </div>
+    </li>
+  </template>
+
+  <template id="calendar-item-template">
+    <li class="task cal-item">
+      <span class="cal-time"></span>
+      <div class="task-body">
+        <div class="task-title-row">
+          <span class="task-title cal-title"></span>
+        </div>
+        <div class="task-meta">
+          <span class="cal-location"></span>
+          <a class="gmail-open-link" target="_blank" rel="noopener">Open in Calendar</a>
+        </div>
       </div>
     </li>
   </template>
