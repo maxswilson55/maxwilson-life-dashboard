@@ -70,11 +70,58 @@ function toggleDone(id) {
   render();
 }
 
+function updateTask(id, { title, category, priority, due, notes }) {
+  const t = tasks.find((x) => x.id === id);
+  if (!t) return;
+  t.title = title.trim();
+  t.category = category;
+  t.priority = priority;
+  t.due = due || null;
+  t.notes = notes.trim();
+  saveTasks(tasks);
+  render();
+}
+
 function deleteTask(id) {
   tasks = tasks.filter((x) => x.id !== id);
   saveTasks(tasks);
   render();
 }
+
+function requestDeleteTask(id) {
+  const task = tasks.find((x) => x.id === id);
+  if (!task) return;
+  deleteTask(id);
+  showToast(`Deleted "${task.title}"`, () => {
+    tasks.push(task);
+    saveTasks(tasks);
+    render();
+  });
+}
+
+const toastEl = document.getElementById("toast");
+const toastMessageEl = document.getElementById("toast-message");
+const toastUndoBtn = document.getElementById("toast-undo-btn");
+let toastTimeoutId = null;
+let toastUndoHandler = null;
+
+function showToast(message, onUndo) {
+  clearTimeout(toastTimeoutId);
+  toastMessageEl.textContent = message;
+  toastUndoHandler = onUndo;
+  toastEl.hidden = false;
+  toastTimeoutId = setTimeout(() => {
+    toastEl.hidden = true;
+    toastUndoHandler = null;
+  }, 5000);
+}
+
+toastUndoBtn.addEventListener("click", () => {
+  clearTimeout(toastTimeoutId);
+  toastEl.hidden = true;
+  if (toastUndoHandler) toastUndoHandler();
+  toastUndoHandler = null;
+});
 
 function inScope(task) {
   return scope === "all" || task.category === scope;
@@ -140,8 +187,10 @@ function renderTaskItem(task) {
     notesEl.remove();
   }
 
+  node.querySelector(".task-edit").addEventListener("click", () => enterEditMode(task));
+
   node.querySelector(".task-delete").addEventListener("click", () => {
-    if (confirm(`Delete "${task.title}"?`)) deleteTask(task.id);
+    requestDeleteTask(task.id);
   });
 
   return node;
@@ -193,20 +242,59 @@ function renderStats(active, todayAndOverdue, completed) {
   });
 }
 
+let editingTaskId = null;
+const taskSubmitBtn = document.getElementById("task-submit-btn");
+const taskCancelEditBtn = document.getElementById("task-cancel-edit-btn");
+
+function resetForm() {
+  document.getElementById("task-form").reset();
+  document.getElementById("task-priority").value = "medium";
+  updateDateUI();
+}
+
+function enterEditMode(task) {
+  editingTaskId = task.id;
+  document.getElementById("task-title").value = task.title;
+  document.getElementById("task-category").value = task.category;
+  document.getElementById("task-priority").value = task.priority;
+  document.getElementById("task-notes").value = task.notes || "";
+  dueInput.value = task.due || "";
+  updateDateUI();
+  taskSubmitBtn.textContent = "Save";
+  taskCancelEditBtn.hidden = false;
+  document.querySelector(".quick-add").scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById("task-title").focus();
+}
+
+function exitEditMode() {
+  editingTaskId = null;
+  taskSubmitBtn.textContent = "Add";
+  taskCancelEditBtn.hidden = true;
+  resetForm();
+}
+
+taskCancelEditBtn.addEventListener("click", exitEditMode);
+
 document.getElementById("task-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const title = document.getElementById("task-title").value;
   if (!title.trim()) return;
-  addTask({
+  const payload = {
     title,
     category: document.getElementById("task-category").value,
     priority: document.getElementById("task-priority").value,
     due: document.getElementById("task-due").value,
     notes: document.getElementById("task-notes").value,
-  });
-  e.target.reset();
-  document.getElementById("task-priority").value = "medium";
-  updateDateUI();
+  };
+  if (editingTaskId) {
+    updateTask(editingTaskId, payload);
+    editingTaskId = null;
+    taskSubmitBtn.textContent = "Add";
+    taskCancelEditBtn.hidden = true;
+  } else {
+    addTask(payload);
+  }
+  resetForm();
   document.getElementById("task-title").focus();
 });
 
@@ -320,7 +408,7 @@ function renderGmailItem(item) {
       category: "work",
       priority: "medium",
       due: "",
-      notes: `Email from ${item.from} — ${item.link}`,
+      notes: `From: ${item.from}`,
     });
     e.target.textContent = "Added ✓";
     e.target.classList.add("is-added");
@@ -416,7 +504,7 @@ function renderTicktickItem(item) {
       category: "work",
       priority: item.priority,
       due: item.due || "",
-      notes: `From TickTick (${item.projectName}) — ${item.link}`,
+      notes: `From TickTick · ${item.projectName}`,
     });
     e.target.textContent = "Added ✓";
     e.target.classList.add("is-added");

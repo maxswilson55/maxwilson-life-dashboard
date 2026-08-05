@@ -37,7 +37,8 @@
             <option value="medium" selected>🟡 Medium</option>
             <option value="low">🔵 Low</option>
           </select>
-          <button type="submit">Add</button>
+          <button type="submit" id="task-submit-btn">Add</button>
+          <button type="button" id="task-cancel-edit-btn" class="link-btn" hidden>Cancel</button>
         </div>
         <div class="date-row">
           <div class="date-chips" id="date-chips">
@@ -110,6 +111,11 @@
     </section>
   </main>
 
+  <div class="toast" id="toast" hidden>
+    <span id="toast-message"></span>
+    <button type="button" id="toast-undo-btn">Undo</button>
+  </div>
+
   <template id="task-item-template">
     <li class="task" data-id="">
       <label class="task-check">
@@ -127,6 +133,7 @@
           <span class="task-notes"></span>
         </div>
       </div>
+      <button class="task-edit" title="Edit" aria-label="Edit task">✏️</button>
       <button class="task-delete" title="Delete" aria-label="Delete task">×</button>
     </li>
   </template>

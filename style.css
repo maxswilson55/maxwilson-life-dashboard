@@ -500,19 +500,50 @@ body { padding-bottom: 3rem; }
 
 .task-due.is-overdue { color: var(--high); font-weight: 600; }
 
-.task-delete {
+.task-delete, .task-edit {
   border: none;
   background: transparent;
   color: var(--muted);
-  font-size: 1.1rem;
+  font-size: 1rem;
   line-height: 1;
   cursor: pointer;
-  padding: 0.1rem 0.3rem;
+  padding: 0.2rem 0.35rem;
   border-radius: 6px;
   flex: 0 0 auto;
 }
 
+.task-delete { font-size: 1.1rem; }
+
 .task-delete:hover { background: var(--surface-hover); color: var(--high); }
+.task-edit:hover { background: var(--surface-hover); }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0.65rem 0.7rem 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  z-index: 20;
+}
+
+#toast-undo-btn {
+  border: none;
+  background: none;
+  color: var(--accent-bright);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+}
 
 .completed-section {
   margin-top: 1.5rem;
