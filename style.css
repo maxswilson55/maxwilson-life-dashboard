@@ -294,16 +294,36 @@ body { padding-bottom: 3rem; }
 
 .cal-item { align-items: center; }
 
+.task.cal-item {
+  background: var(--cal-accent-bg, var(--surface));
+  border-left-color: var(--cal-accent, var(--border));
+}
+
+.cal-item .task-title {
+  font-weight: 600;
+}
+
 .cal-time {
   font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--accent-bright);
-  min-width: 60px;
+  font-weight: 700;
+  color: var(--cal-accent, var(--accent-bright));
+  min-width: 62px;
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
 }
 
 .cal-location { color: var(--muted); }
+
+.cal-day-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0.7rem 0 0.4rem 0.1rem;
+}
+
+.cal-day-header:first-child { margin-top: 0; }
 
 .gmail-reason-badge {
   font-size: 0.66rem;

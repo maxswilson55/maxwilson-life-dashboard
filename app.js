@@ -575,15 +575,52 @@ const calendarHint = document.getElementById("calendar-hint");
 const calendarConnectBtn = document.getElementById("calendar-connect-btn");
 const calendarRefreshBtn = document.getElementById("calendar-refresh-btn");
 
+const CAL_PALETTE = [
+  { fg: "#8b5cf6", bg: "rgba(139, 92, 246, 0.16)" },
+  { fg: "#66a6ff", bg: "rgba(102, 166, 255, 0.16)" },
+  { fg: "#52d39b", bg: "rgba(82, 211, 155, 0.16)" },
+  { fg: "#f3b95f", bg: "rgba(243, 185, 95, 0.16)" },
+  { fg: "#f472b6", bg: "rgba(244, 114, 182, 0.16)" },
+  { fg: "#2dd4bf", bg: "rgba(45, 212, 191, 0.16)" },
+];
+
+function hashString(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function eventDateISO(event) {
+  return event.allDay ? event.start : toISO(new Date(event.start));
+}
+
+function groupEventsByDay(events) {
+  const groups = [];
+  let currentKey = null;
+  let currentGroup = null;
+  events.forEach((event) => {
+    const dateISO = eventDateISO(event);
+    if (dateISO !== currentKey) {
+      currentKey = dateISO;
+      currentGroup = { label: formatDue(dateISO) || dateISO, events: [] };
+      groups.push(currentGroup);
+    }
+    currentGroup.events.push(event);
+  });
+  return groups;
+}
+
 function renderCalendarItem(event) {
   const node = calendarTemplate.content.firstElementChild.cloneNode(true);
 
-  const start = new Date(event.start);
-  const dateLabel = formatDue(toISO(start)) || start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const color = CAL_PALETTE[hashString(event.id) % CAL_PALETTE.length];
+  node.style.setProperty("--cal-accent", color.fg);
+  node.style.setProperty("--cal-accent-bg", color.bg);
+
   const timeLabel = event.allDay
     ? "All day"
-    : start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  node.querySelector(".cal-time").textContent = `${dateLabel}, ${timeLabel}`;
+    : new Date(event.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  node.querySelector(".cal-time").textContent = timeLabel;
 
   node.querySelector(".cal-title").textContent = event.title;
 
@@ -597,6 +634,13 @@ function renderCalendarItem(event) {
   node.querySelector(".gmail-open-link").href = event.link;
 
   return node;
+}
+
+function renderCalendarDayHeader(label) {
+  const li = document.createElement("li");
+  li.className = "cal-day-header";
+  li.textContent = label;
+  return li;
 }
 
 async function loadCalendarEvents() {
@@ -620,7 +664,10 @@ async function loadCalendarEvents() {
       calendarHint.hidden = false;
     } else {
       calendarHint.hidden = true;
-      events.forEach((event) => calendarList.appendChild(renderCalendarItem(event)));
+      groupEventsByDay(events).forEach((group) => {
+        calendarList.appendChild(renderCalendarDayHeader(group.label));
+        group.events.forEach((event) => calendarList.appendChild(renderCalendarItem(event)));
+      });
     }
   } catch (err) {
     console.error("Calendar events failed", err);
