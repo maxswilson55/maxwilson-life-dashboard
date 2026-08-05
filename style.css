@@ -1,0 +1,518 @@
+:root {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --surface-2: #eceef3;
+  --text: #16181d;
+  --muted: #5b6270;
+  --border: #dfe2e8;
+  --accent: #3a5ccc;
+  --accent-2: #8a4fd6;
+  --gradient: linear-gradient(90deg, #3a5ccc, #8a4fd6, #d6497f);
+  --high: #d6304a;
+  --high-bg: #fce3e6;
+  --medium: #c07a00;
+  --medium-bg: #fdefd4;
+  --low: #1f7ae0;
+  --low-bg: #dff0ff;
+  --work-bg: #e6e9fb;
+  --work-text: #3f47b8;
+  --personal-bg: #ddf5ea;
+  --personal-text: #14915f;
+  --shadow: 0 1px 2px rgba(20, 22, 30, 0.06), 0 1px 8px rgba(20, 22, 30, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111318;
+    --surface: #1b1e26;
+    --surface-2: #22252f;
+    --text: #f2f3f6;
+    --muted: #9aa0ab;
+    --border: #2b2f3a;
+    --accent: #7d99ff;
+    --accent-2: #b58bff;
+    --gradient: linear-gradient(90deg, #7d99ff, #b58bff, #ff85ac);
+    --high: #ff7a86;
+    --high-bg: #3d2024;
+    --medium: #f2bd63;
+    --medium-bg: #3b2e17;
+    --low: #7fb4ff;
+    --low-bg: #1c2c45;
+    --work-bg: #262b4a;
+    --work-text: #b3bcff;
+    --personal-bg: #143528;
+    --personal-text: #7fe6bb;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.25);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body { padding-bottom: 3rem; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+.topbar::before {
+  content: "";
+  display: block;
+  height: 3px;
+  background: var(--gradient);
+}
+
+.topbar-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0.9rem 1rem 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.topbar h1 {
+  font-size: 1.25rem;
+  margin: 0;
+  font-weight: 800;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.stats-strip {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 1rem 0.7rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.scope-tabs {
+  display: flex;
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.scope-tab {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.scope-tab.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-weight: 600;
+}
+
+.content {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.quick-add {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.9rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+#task-form input[type="text"],
+#task-form textarea,
+#task-form select,
+#task-form input[type="date"] {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 0.5rem 0.6rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+#task-title {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.quick-add-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.quick-add-row select {
+  flex: 1 1 110px;
+  min-width: 0;
+}
+
+.quick-add-row button {
+  flex: 0 0 auto;
+  background: var(--gradient);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(58, 92, 204, 0.35);
+}
+
+.quick-add-row button:hover { filter: brightness(1.06); }
+
+.date-row {
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.date-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.date-chip {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.date-chip:hover { border-color: var(--accent); }
+
+.date-chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.date-chip-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.date-chip-clear {
+  color: var(--high);
+  border-color: var(--high-bg);
+  background: var(--high-bg);
+  padding: 0.35rem 0.55rem;
+}
+
+.native-date-input {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#task-notes {
+  width: 100%;
+  resize: vertical;
+}
+
+.gmail-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.9rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.gmail-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.gmail-header h2 {
+  font-size: 0.95rem;
+  margin: 0;
+  flex: 1;
+}
+
+.gmail-connect-btn {
+  background: var(--gradient);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.gmail-item { align-items: center; }
+
+.gmail-reason-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: var(--medium-bg);
+  color: var(--medium);
+}
+
+.gmail-reason-badge.reason-starred { background: var(--low-bg); color: var(--low); }
+
+.gmail-from { color: var(--muted); }
+
+.gmail-open-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.78rem;
+}
+
+.gmail-open-link:hover { text-decoration: underline; }
+
+.gmail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+}
+
+.gmail-add-btn {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gmail-add-btn:hover { background: var(--accent); color: white; }
+
+.gmail-add-btn.is-added {
+  border-color: var(--personal-text);
+  color: var(--personal-text);
+  pointer-events: none;
+}
+
+.gmail-dismiss-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 6px;
+}
+
+.gmail-dismiss-btn:hover { background: var(--surface-2); color: var(--high); }
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  .board { grid-template-columns: 1fr; }
+}
+
+.column h2 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0 0 0.5rem 0.15rem;
+}
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.empty-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.15rem;
+}
+
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  box-shadow: var(--shadow);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.task:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(20, 22, 30, 0.1);
+}
+
+.task.priority-high { border-left-color: var(--high); }
+.task.priority-medium { border-left-color: var(--medium); }
+.task.priority-low { border-left-color: var(--low); }
+
+.task.is-done { opacity: 0.55; }
+.task.is-done .task-title { text-decoration: line-through; }
+
+.task-check input { display: none; }
+
+.checkmark {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  margin-top: 0.1rem;
+  cursor: pointer;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.task-check input:checked + .checkmark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.task-check input:checked + .checkmark::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.task-body { flex: 1; min-width: 0; }
+
+.task-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.task-title {
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+.priority-badge, .category-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.priority-high { color: var(--high); background: var(--high-bg); }
+.priority-medium { color: var(--medium); background: var(--medium-bg); }
+.priority-low { color: var(--low); background: var(--low-bg); }
+
+.category-work { color: var(--work-text); background: var(--work-bg); }
+.category-personal { color: var(--personal-text); background: var(--personal-bg); }
+
+.task-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: 0.2rem;
+}
+
+.task-due.is-overdue { color: var(--high); font-weight: 600; }
+
+.task-delete {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 6px;
+  flex: 0 0 auto;
+}
+
+.task-delete:hover { background: var(--surface-2); color: var(--high); }
+
+.completed-section {
+  margin-top: 1.5rem;
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+
+.completed-section .task-list {
+  margin-top: 0.6rem;
+}
+
+[hidden] { display: none !important; }

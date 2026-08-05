@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Life Dashboard</title>
+  <meta name="theme-color" content="#111318" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <h1>✨ Life Dashboard</h1>
+      <div class="scope-tabs" role="tablist" aria-label="Scope filter">
+        <button class="scope-tab is-active" data-scope="all" role="tab" aria-selected="true">All</button>
+        <button class="scope-tab" data-scope="work" role="tab" aria-selected="false">💼 Work</button>
+        <button class="scope-tab" data-scope="personal" role="tab" aria-selected="false">🏡 Personal</button>
+      </div>
+    </div>
+    <div class="stats-strip" id="stats-strip"></div>
+  </header>
+
+  <main class="content">
+    <section class="quick-add">
+      <form id="task-form">
+        <input type="text" id="task-title" placeholder="Add a task…" autocomplete="off" required />
+        <div class="quick-add-row">
+          <select id="task-category" aria-label="Category">
+            <option value="work">💼 Work</option>
+            <option value="personal">🏡 Personal</option>
+          </select>
+          <select id="task-priority" aria-label="Priority">
+            <option value="high">🔴 High</option>
+            <option value="medium" selected>🟡 Medium</option>
+            <option value="low">🔵 Low</option>
+          </select>
+          <button type="submit">Add</button>
+        </div>
+        <div class="date-row">
+          <div class="date-chips" id="date-chips">
+            <button type="button" class="date-chip" data-offset="0">Today</button>
+            <button type="button" class="date-chip" data-offset="1">Tomorrow</button>
+            <button type="button" class="date-chip" data-offset="3">In 3 days</button>
+            <button type="button" class="date-chip" data-offset="4">In 4 days</button>
+            <button type="button" class="date-chip date-chip-pick" id="pick-date-btn">📅 <span id="picked-date-label">Choose date…</span></button>
+            <button type="button" class="date-chip date-chip-clear" id="clear-date-btn" hidden>✕</button>
+          </div>
+          <input type="date" id="task-due" aria-label="Due date" class="native-date-input" />
+        </div>
+        <textarea id="task-notes" placeholder="Notes (optional)" rows="2"></textarea>
+      </form>
+    </section>
+
+    <section class="gmail-section" id="gmail-section">
+      <div class="gmail-header">
+        <h2>📧 Gmail</h2>
+        <button id="gmail-connect-btn" class="gmail-connect-btn" hidden>Connect Gmail</button>
+        <button id="gmail-refresh-btn" class="link-btn" hidden>Refresh</button>
+      </div>
+      <p class="empty-hint" id="gmail-hint">Connect Gmail to see emails that need a reply or are starred.</p>
+      <ul class="task-list" id="gmail-suggestions"></ul>
+    </section>
+
+    <section class="board" id="board">
+      <div class="column" id="col-today">
+        <h2>Today &amp; Overdue</h2>
+        <ul class="task-list" id="list-today"></ul>
+        <p class="empty-hint" id="hint-today">Nothing due — you're clear.</p>
+      </div>
+
+      <div class="column" id="col-upcoming">
+        <h2>Upcoming</h2>
+        <ul class="task-list" id="list-upcoming"></ul>
+        <p class="empty-hint" id="hint-upcoming">No upcoming tasks.</p>
+      </div>
+
+      <div class="column" id="col-someday">
+        <h2>No Date</h2>
+        <ul class="task-list" id="list-someday"></ul>
+        <p class="empty-hint" id="hint-someday">Nothing here.</p>
+      </div>
+    </section>
+
+    <section class="completed-section">
+      <button id="toggle-completed" class="link-btn" aria-expanded="false">Show completed (<span id="completed-count">0</span>)</button>
+      <ul class="task-list" id="list-completed" hidden></ul>
+    </section>
+  </main>
+
+  <template id="task-item-template">
+    <li class="task" data-id="">
+      <label class="task-check">
+        <input type="checkbox" />
+        <span class="checkmark"></span>
+      </label>
+      <div class="task-body">
+        <div class="task-title-row">
+          <span class="priority-badge"></span>
+          <span class="task-title"></span>
+          <span class="category-badge"></span>
+        </div>
+        <div class="task-meta">
+          <span class="task-due"></span>
+          <span class="task-notes"></span>
+        </div>
+      </div>
+      <button class="task-delete" title="Delete" aria-label="Delete task">×</button>
+    </li>
+  </template>
+
+  <template id="gmail-item-template">
+    <li class="task gmail-item">
+      <span class="gmail-reason-badge"></span>
+      <div class="task-body">
+        <div class="task-title-row">
+          <span class="task-title gmail-subject"></span>
+        </div>
+        <div class="task-meta">
+          <span class="gmail-from"></span>
+          <a class="gmail-open-link" target="_blank" rel="noopener">Open in Gmail</a>
+        </div>
+      </div>
+      <div class="gmail-actions">
+        <button class="gmail-add-btn" type="button">+ Add as task</button>
+        <button class="gmail-dismiss-btn" type="button" title="Dismiss" aria-label="Dismiss">×</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
