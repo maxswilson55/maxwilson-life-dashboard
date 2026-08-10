@@ -196,10 +196,32 @@ function renderTaskItem(task) {
   return node;
 }
 
-function renderList(listEl, hintEl, list) {
+const COLLAPSE_AT = 6;
+const expandedSections = new Set();
+
+function renderList(listEl, hintEl, list, sectionKey) {
   listEl.innerHTML = "";
-  list.forEach((t) => listEl.appendChild(renderTaskItem(t)));
+  const isExpanded = !sectionKey || expandedSections.has(sectionKey);
+  const visibleList = isExpanded ? list : list.slice(0, COLLAPSE_AT);
+  visibleList.forEach((t) => listEl.appendChild(renderTaskItem(t)));
   if (hintEl) hintEl.hidden = list.length > 0;
+
+  const existingToggle = listEl.parentElement.querySelector(`.section-toggle[data-section="${sectionKey}"]`);
+  if (existingToggle) existingToggle.remove();
+
+  if (sectionKey && list.length > COLLAPSE_AT) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "link-btn section-toggle";
+    btn.dataset.section = sectionKey;
+    btn.textContent = isExpanded ? "Show less" : `Show ${list.length - COLLAPSE_AT} more`;
+    btn.addEventListener("click", () => {
+      if (isExpanded) expandedSections.delete(sectionKey);
+      else expandedSections.add(sectionKey);
+      render();
+    });
+    listEl.after(btn);
+  }
 }
 
 function render() {
@@ -214,9 +236,9 @@ function render() {
     .filter((t) => t.done)
     .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
-  renderList(document.getElementById("list-today"), document.getElementById("hint-today"), todayAndOverdue);
-  renderList(document.getElementById("list-upcoming"), document.getElementById("hint-upcoming"), upcoming);
-  renderList(document.getElementById("list-someday"), document.getElementById("hint-someday"), someday);
+  renderList(document.getElementById("list-today"), document.getElementById("hint-today"), todayAndOverdue, "today");
+  renderList(document.getElementById("list-upcoming"), document.getElementById("hint-upcoming"), upcoming, "upcoming");
+  renderList(document.getElementById("list-someday"), document.getElementById("hint-someday"), someday, "someday");
   renderList(document.getElementById("list-completed"), null, completed);
 
   document.getElementById("completed-count").textContent = completed.length;

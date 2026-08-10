@@ -389,13 +389,10 @@ body { padding-bottom: 3rem; }
 .gmail-dismiss-btn:hover { background: var(--surface-hover); color: var(--high); }
 
 .board {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-@media (max-width: 720px) {
-  .board { grid-template-columns: 1fr; }
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .column h2 {
