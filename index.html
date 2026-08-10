@@ -48,6 +48,10 @@
     </section>
 
     <section class="quick-add">
+      <div class="followup-banner" id="followup-banner" hidden>
+        <span>🔗 Follow-up to: <strong id="followup-parent-title"></strong></span>
+        <button type="button" class="link-btn" id="followup-cancel-btn">Cancel</button>
+      </div>
       <form id="task-form">
         <input type="text" id="task-title" placeholder="Add a task…" autocomplete="off" required />
         <div class="quick-add-row">
@@ -161,6 +165,7 @@
 
   <div class="toast" id="toast" hidden>
     <span id="toast-message"></span>
+    <button type="button" id="toast-action-btn" hidden></button>
     <button type="button" id="toast-undo-btn">Undo</button>
   </div>
 
@@ -178,9 +183,11 @@
         </div>
         <div class="task-meta">
           <span class="task-due"></span>
+          <span class="task-followup-of"></span>
           <span class="task-notes"></span>
         </div>
       </div>
+      <button class="task-followup" title="Add follow-up task" aria-label="Add follow-up task">🔗</button>
       <button class="task-edit" title="Edit" aria-label="Edit task">✏️</button>
       <button class="task-delete" title="Delete" aria-label="Delete task">×</button>
     </li>

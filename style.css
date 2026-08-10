@@ -769,7 +769,7 @@ body { padding-bottom: 3rem; }
 
 .task-due.is-overdue { color: var(--high); font-weight: 600; }
 
-.task-delete, .task-edit {
+.task-delete, .task-edit, .task-followup {
   border: none;
   background: transparent;
   color: var(--muted);
@@ -785,6 +785,28 @@ body { padding-bottom: 3rem; }
 
 .task-delete:hover { background: var(--surface-hover); color: var(--high); }
 .task-edit:hover { background: var(--surface-hover); }
+.task-followup:hover { background: var(--surface-hover); color: var(--accent-bright); }
+
+.task-followup-of {
+  color: var(--accent-bright);
+  font-style: italic;
+}
+
+.followup-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--border-active);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.followup-banner strong { color: var(--accent-bright); }
 
 .toast {
   position: fixed;
@@ -804,7 +826,7 @@ body { padding-bottom: 3rem; }
   z-index: 20;
 }
 
-#toast-undo-btn {
+#toast-undo-btn, #toast-action-btn {
   border: none;
   background: none;
   color: var(--accent-bright);
@@ -813,6 +835,8 @@ body { padding-bottom: 3rem; }
   cursor: pointer;
   padding: 0.2rem 0.4rem;
 }
+
+#toast-action-btn { color: var(--personal-text); }
 
 .completed-section {
   margin-top: 1.5rem;

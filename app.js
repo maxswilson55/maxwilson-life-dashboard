@@ -5,7 +5,7 @@ const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 const PRIORITY_EMOJI = { high: "🔴", medium: "🟡", low: "🔵" };
 const CATEGORY_EMOJI = { work: "💼", personal: "🏡" };
 
-/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null}} Task */
+/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null}} Task */
 
 function loadTasks() {
   try {
@@ -45,7 +45,7 @@ function makeId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-function addTask({ title, category, priority, due, notes }) {
+function addTask({ title, category, priority, due, notes, followUpOf }) {
   tasks.push({
     id: makeId(),
     title: title.trim(),
@@ -56,6 +56,7 @@ function addTask({ title, category, priority, due, notes }) {
     done: false,
     createdAt: Date.now(),
     completedAt: null,
+    followUpOf: followUpOf || null,
   });
   saveTasks(tasks);
   render();
@@ -94,12 +95,16 @@ function handleTaskCheckboxChange(task, node) {
 
   setTimeout(() => {
     render();
-    showToast(`Completed "${task.title}"`, () => {
-      task.done = false;
-      task.completedAt = null;
-      saveTasks(tasks);
-      render();
-    });
+    showToast(
+      `Completed "${task.title}"`,
+      () => {
+        task.done = false;
+        task.completedAt = null;
+        saveTasks(tasks);
+        render();
+      },
+      { label: "+ Follow-up", handler: () => startFollowUp(task) }
+    );
   }, 650);
 }
 
@@ -135,17 +140,23 @@ function requestDeleteTask(id) {
 const toastEl = document.getElementById("toast");
 const toastMessageEl = document.getElementById("toast-message");
 const toastUndoBtn = document.getElementById("toast-undo-btn");
+const toastActionBtn = document.getElementById("toast-action-btn");
 let toastTimeoutId = null;
 let toastUndoHandler = null;
+let toastActionHandler = null;
 
-function showToast(message, onUndo) {
+function showToast(message, onUndo, action) {
   clearTimeout(toastTimeoutId);
   toastMessageEl.textContent = message;
   toastUndoHandler = onUndo;
+  toastActionHandler = action ? action.handler : null;
+  toastActionBtn.textContent = action ? action.label : "";
+  toastActionBtn.hidden = !action;
   toastEl.hidden = false;
   toastTimeoutId = setTimeout(() => {
     toastEl.hidden = true;
     toastUndoHandler = null;
+    toastActionHandler = null;
   }, 5000);
 }
 
@@ -154,6 +165,15 @@ toastUndoBtn.addEventListener("click", () => {
   toastEl.hidden = true;
   if (toastUndoHandler) toastUndoHandler();
   toastUndoHandler = null;
+  toastActionHandler = null;
+});
+
+toastActionBtn.addEventListener("click", () => {
+  clearTimeout(toastTimeoutId);
+  toastEl.hidden = true;
+  if (toastActionHandler) toastActionHandler();
+  toastUndoHandler = null;
+  toastActionHandler = null;
 });
 
 function inScope(task) {
@@ -220,6 +240,15 @@ function renderTaskItem(task) {
     notesEl.remove();
   }
 
+  const followUpEl = node.querySelector(".task-followup-of");
+  const parentTask = task.followUpOf ? tasks.find((t) => t.id === task.followUpOf) : null;
+  if (parentTask) {
+    followUpEl.textContent = `↳ Follow-up to "${parentTask.title}"`;
+  } else {
+    followUpEl.remove();
+  }
+
+  node.querySelector(".task-followup").addEventListener("click", () => startFollowUp(task));
   node.querySelector(".task-edit").addEventListener("click", () => enterEditMode(task));
 
   node.querySelector(".task-delete").addEventListener("click", () => {
@@ -411,8 +440,12 @@ function renderStats(active, todayAndOverdue, completed) {
 }
 
 let editingTaskId = null;
+let followUpOfId = null;
 const taskSubmitBtn = document.getElementById("task-submit-btn");
 const taskCancelEditBtn = document.getElementById("task-cancel-edit-btn");
+const followupBanner = document.getElementById("followup-banner");
+const followupParentTitle = document.getElementById("followup-parent-title");
+const followupCancelBtn = document.getElementById("followup-cancel-btn");
 
 function resetForm() {
   document.getElementById("task-form").reset();
@@ -421,6 +454,7 @@ function resetForm() {
 }
 
 function enterEditMode(task) {
+  exitFollowUpMode();
   editingTaskId = task.id;
   document.getElementById("task-title").value = task.title;
   document.getElementById("task-category").value = task.category;
@@ -443,6 +477,23 @@ function exitEditMode() {
 
 taskCancelEditBtn.addEventListener("click", exitEditMode);
 
+function startFollowUp(task) {
+  exitEditMode();
+  followUpOfId = task.id;
+  followupParentTitle.textContent = task.title;
+  followupBanner.hidden = false;
+  document.getElementById("task-category").value = task.category;
+  document.querySelector(".quick-add").scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById("task-title").focus();
+}
+
+function exitFollowUpMode() {
+  followUpOfId = null;
+  followupBanner.hidden = true;
+}
+
+followupCancelBtn.addEventListener("click", exitFollowUpMode);
+
 document.getElementById("task-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const title = document.getElementById("task-title").value;
@@ -459,6 +510,9 @@ document.getElementById("task-form").addEventListener("submit", (e) => {
     editingTaskId = null;
     taskSubmitBtn.textContent = "Add";
     taskCancelEditBtn.hidden = true;
+  } else if (followUpOfId) {
+    addTask({ ...payload, followUpOf: followUpOfId });
+    exitFollowUpMode();
   } else {
     addTask(payload);
   }
