@@ -755,19 +755,16 @@ function renderStockItem(quote) {
 
   const priceEl = node.querySelector(".stock-price");
   const changeEl = node.querySelector(".stock-change");
-  const currencyEl = node.querySelector(".stock-currency");
 
   if (quote.error) {
-    priceEl.textContent = "Unavailable";
+    priceEl.textContent = "—";
     changeEl.remove();
-    currencyEl.remove();
   } else {
     priceEl.textContent = quote.price.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    currencyEl.textContent = quote.currency;
-    if (quote.change != null && quote.changePercent != null) {
-      const sign = quote.change >= 0 ? "+" : "";
-      changeEl.textContent = `${sign}${quote.change.toFixed(2)} (${sign}${quote.changePercent.toFixed(2)}%)`;
-      changeEl.classList.add(quote.change > 0 ? "is-up" : quote.change < 0 ? "is-down" : "is-flat");
+    if (quote.changePercent != null) {
+      const sign = quote.changePercent >= 0 ? "+" : "";
+      changeEl.textContent = `${sign}${quote.changePercent.toFixed(2)}%`;
+      changeEl.classList.add(quote.changePercent > 0 ? "is-up" : quote.changePercent < 0 ? "is-down" : "is-flat");
     } else {
       changeEl.remove();
     }
