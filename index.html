@@ -47,6 +47,28 @@
       </div>
     </section>
 
+    <section class="gmail-section" id="journal-section">
+      <div class="gmail-header">
+        <h2>📓 Daily Check-in</h2>
+      </div>
+      <textarea
+        id="journal-input"
+        class="journal-textarea"
+        rows="3"
+        placeholder="How was your day? How are you feeling? Write a few lines — I'll pick out anything actionable."
+      ></textarea>
+      <div class="journal-actions">
+        <button type="button" id="journal-submit-btn" class="journal-submit-btn">Analyze my day</button>
+        <span class="journal-status" id="journal-status"></span>
+      </div>
+      <div class="journal-result" id="journal-result" hidden>
+        <span class="journal-mood-badge" id="journal-mood-badge"></span>
+        <ul class="task-list" id="journal-suggested-tasks"></ul>
+      </div>
+      <p class="journal-history-header" id="journal-history-header" hidden>Recent mood</p>
+      <div class="journal-mood-history" id="journal-mood-history"></div>
+    </section>
+
     <section class="quick-add">
       <div class="followup-banner" id="followup-banner" hidden>
         <span>🔗 Follow-up to: <strong id="followup-parent-title"></strong></span>
@@ -252,6 +274,19 @@
       <span class="stock-price"></span>
       <span class="stock-change"></span>
       <button class="stock-remove" type="button" title="Remove" aria-label="Remove ticker">×</button>
+    </li>
+  </template>
+
+  <template id="journal-task-item-template">
+    <li class="task gmail-item">
+      <div class="task-body">
+        <div class="task-title-row">
+          <span class="task-title journal-task-title"></span>
+        </div>
+      </div>
+      <div class="gmail-actions">
+        <button class="gmail-add-btn" type="button">+ Add as task</button>
+      </div>
     </li>
   </template>
 

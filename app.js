@@ -1095,4 +1095,117 @@ function updateTopbarHeightVar() {
 updateTopbarHeightVar();
 window.addEventListener("resize", updateTopbarHeightVar);
 
+const JOURNAL_KEY = "lifeDashboard.journal.v1";
+
+function loadJournal() {
+  try {
+    return JSON.parse(localStorage.getItem(JOURNAL_KEY) || "{}");
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveJournalEntry(dateISO, entry) {
+  const all = loadJournal();
+  all[dateISO] = entry;
+  localStorage.setItem(JOURNAL_KEY, JSON.stringify(all));
+}
+
+const journalInput = document.getElementById("journal-input");
+const journalSubmitBtn = document.getElementById("journal-submit-btn");
+const journalStatus = document.getElementById("journal-status");
+const journalResult = document.getElementById("journal-result");
+const journalMoodBadge = document.getElementById("journal-mood-badge");
+const journalSuggestedTasks = document.getElementById("journal-suggested-tasks");
+const journalTaskTemplate = document.getElementById("journal-task-item-template");
+const journalMoodHistoryEl = document.getElementById("journal-mood-history");
+const journalHistoryHeader = document.getElementById("journal-history-header");
+
+function renderJournalTaskSuggestion(taskTitle) {
+  const node = journalTaskTemplate.content.firstElementChild.cloneNode(true);
+  node.querySelector(".journal-task-title").textContent = taskTitle;
+  node.querySelector(".gmail-add-btn").addEventListener("click", (e) => {
+    addTask({
+      title: taskTitle,
+      category: "personal",
+      priority: "medium",
+      due: "",
+      notes: "From daily check-in",
+    });
+    e.target.textContent = "Added ✓";
+    e.target.classList.add("is-added");
+  });
+  return node;
+}
+
+function renderMoodHistory() {
+  const all = loadJournal();
+  const days = 14;
+  journalMoodHistoryEl.innerHTML = "";
+  let hasAny = false;
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const iso = toISO(d);
+    const entry = all[iso];
+    const chip = document.createElement("span");
+    chip.className = "mood-chip";
+    if (entry) {
+      hasAny = true;
+      chip.textContent = entry.mood.emoji;
+      chip.title = `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}: ${entry.mood.label} (${entry.mood.score}/10)`;
+    } else {
+      chip.textContent = "·";
+      chip.classList.add("mood-chip-empty");
+      chip.title = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+    journalMoodHistoryEl.appendChild(chip);
+  }
+  journalHistoryHeader.hidden = !hasAny;
+}
+
+async function submitJournalEntry() {
+  const text = journalInput.value.trim();
+  if (!text) return;
+  journalSubmitBtn.disabled = true;
+  journalStatus.textContent = "Thinking…";
+  try {
+    const res = await fetch("/api/journal/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const { mood, tasks } = await res.json();
+
+    saveJournalEntry(todayISO(), { text, mood, createdAt: Date.now() });
+
+    journalMoodBadge.textContent = `${mood.emoji} ${mood.label} (${mood.score}/10)`;
+    journalSuggestedTasks.innerHTML = "";
+    (tasks || []).forEach((t) => journalSuggestedTasks.appendChild(renderJournalTaskSuggestion(t.title)));
+    journalResult.hidden = false;
+    journalStatus.textContent = "";
+    renderMoodHistory();
+  } catch (err) {
+    console.error("Journal analyze failed", err);
+    journalStatus.textContent = "Couldn't analyze that right now — try again.";
+  } finally {
+    journalSubmitBtn.disabled = false;
+  }
+}
+
+journalSubmitBtn.addEventListener("click", submitJournalEntry);
+
+function initJournal() {
+  const all = loadJournal();
+  const todayEntry = all[todayISO()];
+  if (todayEntry) {
+    journalInput.value = todayEntry.text;
+    journalMoodBadge.textContent = `${todayEntry.mood.emoji} ${todayEntry.mood.label} (${todayEntry.mood.score}/10)`;
+    journalResult.hidden = false;
+  }
+  renderMoodHistory();
+}
+initJournal();
+
 render();
