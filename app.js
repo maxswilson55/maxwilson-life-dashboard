@@ -244,6 +244,119 @@ function render() {
   document.getElementById("completed-count").textContent = completed.length;
 
   renderStats(active, todayAndOverdue, completed);
+  renderHero(todayAndOverdue, upcoming, someday);
+  renderHeatmap();
+}
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 5) return { text: "Still up, Max", emoji: "🌙" };
+  if (hour < 12) return { text: "Good morning, Max", emoji: "☀️" };
+  if (hour < 17) return { text: "Good afternoon, Max", emoji: "🌤️" };
+  if (hour < 21) return { text: "Good evening, Max", emoji: "🌆" };
+  return { text: "Good evening, Max", emoji: "🌙" };
+}
+
+function renderHeroTaskRow(task) {
+  const wrap = document.createElement("div");
+  wrap.className = "hero-next-task";
+
+  const label = document.createElement("label");
+  label.className = "task-check";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = task.done;
+  checkbox.addEventListener("change", () => toggleDone(task.id));
+  const checkmark = document.createElement("span");
+  checkmark.className = "checkmark";
+  label.appendChild(checkbox);
+  label.appendChild(checkmark);
+  wrap.appendChild(label);
+
+  const priorityBadge = document.createElement("span");
+  priorityBadge.className = `priority-badge priority-${task.priority}`;
+  priorityBadge.textContent = `${PRIORITY_EMOJI[task.priority]} ${task.priority}`;
+  wrap.appendChild(priorityBadge);
+
+  const title = document.createElement("span");
+  title.className = "task-title";
+  title.style.flex = "1";
+  title.textContent = task.title;
+  wrap.appendChild(title);
+
+  if (task.due) {
+    const due = document.createElement("span");
+    due.className = "task-due";
+    due.textContent = formatDue(task.due);
+    if (task.due < todayISO() && !task.done) due.classList.add("is-overdue");
+    wrap.appendChild(due);
+  }
+
+  return wrap;
+}
+
+function renderHero(todayAndOverdue, upcoming, someday) {
+  const greeting = getGreeting();
+  document.getElementById("hero-greeting").textContent = `${greeting.emoji} ${greeting.text}`;
+  document.getElementById("hero-date").textContent = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
+  const nextTask = todayAndOverdue[0] || upcoming[0] || someday[0] || null;
+  const nextActionEl = document.getElementById("hero-next-action");
+  nextActionEl.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "hero-next-label";
+  label.textContent = "Next up";
+  nextActionEl.appendChild(label);
+
+  if (!nextTask) {
+    const empty = document.createElement("p");
+    empty.className = "hero-next-empty";
+    empty.textContent = "Nothing on your plate — you're all clear.";
+    nextActionEl.appendChild(empty);
+  } else {
+    nextActionEl.appendChild(renderHeroTaskRow(nextTask));
+  }
+}
+
+function heatLevel(count) {
+  if (count <= 0) return 0;
+  if (count === 1) return 1;
+  if (count === 2) return 2;
+  return 3;
+}
+
+function renderHeatmap() {
+  const weeks = 10;
+  const totalDays = weeks * 7;
+  const counts = {};
+  tasks.forEach((t) => {
+    if (t.done && t.completedAt) {
+      const iso = toISO(new Date(t.completedAt));
+      counts[iso] = (counts[iso] || 0) + 1;
+    }
+  });
+
+  const grid = document.getElementById("heatmap-grid");
+  grid.innerHTML = "";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = totalDays - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const iso = toISO(d);
+    const count = counts[iso] || 0;
+    const cell = document.createElement("div");
+    cell.className = "heat-cell";
+    cell.dataset.level = heatLevel(count);
+    cell.title = `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}: ${count} completed`;
+    grid.appendChild(cell);
+  }
 }
 
 function renderStats(active, todayAndOverdue, completed) {
