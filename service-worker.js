@@ -1,4 +1,4 @@
-const CACHE_NAME = "life-dashboard-v19";
+const CACHE_NAME = "life-dashboard-v20";
 const ASSETS = [
   "./",
   "./index.html",
@@ -32,5 +32,37 @@ self.addEventListener("fetch", (event) => {
   }
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request))
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let data = { title: "Daily Check-in", body: "How was your day?", url: "/" };
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (err) {
+      /* keep default */
+    }
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    clients.matchAll({ type: "window" }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
   );
 });

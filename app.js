@@ -1208,4 +1208,73 @@ function initJournal() {
 }
 initJournal();
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+const pushEnableBtn = document.getElementById("push-enable-btn");
+const pushStatusEl = document.getElementById("push-status");
+
+async function initPushUI() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    pushEnableBtn.hidden = true;
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      pushEnableBtn.textContent = "🔔 Daily reminder on";
+      pushEnableBtn.disabled = true;
+    }
+  } catch (err) {
+    console.warn("Push init check failed", err);
+  }
+}
+
+async function enablePush() {
+  pushStatusEl.textContent = "Enabling…";
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      pushStatusEl.textContent = "Notification permission wasn't granted.";
+      return;
+    }
+    const keyRes = await fetch("/api/push/vapid-public-key");
+    if (!keyRes.ok) throw new Error(`status ${keyRes.status}`);
+    const { publicKey } = await keyRes.json();
+    if (!publicKey) throw new Error("no_public_key");
+
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+
+    const subRes = await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(subscription),
+    });
+    if (!subRes.ok) throw new Error(`status ${subRes.status}`);
+
+    pushEnableBtn.textContent = "🔔 Daily reminder on";
+    pushEnableBtn.disabled = true;
+    pushStatusEl.textContent = "You'll get a check-in reminder at 9pm daily.";
+  } catch (err) {
+    console.error("Enable push failed", err);
+    pushStatusEl.textContent = "Couldn't enable notifications right now.";
+  }
+}
+
+pushEnableBtn.addEventListener("click", enablePush);
+initPushUI();
+
 render();

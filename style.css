@@ -306,6 +306,32 @@ body { padding-bottom: 3rem; }
 
 .journal-status { color: var(--muted); font-size: 0.82rem; }
 
+.push-enable-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
+}
+
+.push-enable-btn {
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.push-enable-btn:hover:not(:disabled) { border-color: var(--border-active); color: var(--accent-bright); }
+.push-enable-btn:disabled {
+  color: var(--personal-text);
+  border-color: var(--personal-text);
+  opacity: 0.8;
+  cursor: default;
+}
+
 .journal-result { margin-top: 0.9rem; }
 
 .journal-mood-badge {
