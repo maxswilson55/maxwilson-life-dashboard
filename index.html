@@ -105,6 +105,19 @@
       <ul class="task-list" id="gmail-suggestions"></ul>
     </section>
 
+    <section class="gmail-section" id="stocks-section">
+      <div class="gmail-header">
+        <h2>💹 Portfolio</h2>
+        <button id="stocks-refresh-btn" class="link-btn">Refresh</button>
+      </div>
+      <form id="stock-add-form" class="stock-add-row">
+        <input type="text" id="stock-symbol-input" placeholder="Add ticker (e.g. AAPL)" autocomplete="off" />
+        <button type="submit">Add</button>
+      </form>
+      <p class="empty-hint" id="stocks-hint">Loading quotes…</p>
+      <ul class="task-list" id="stock-items"></ul>
+    </section>
+
     <section class="gmail-section" id="news-section">
       <div class="gmail-header">
         <h2>📰 Business News</h2>
@@ -197,6 +210,22 @@
           <a class="gmail-open-link" target="_blank" rel="noopener">Open in Calendar</a>
         </div>
       </div>
+    </li>
+  </template>
+
+  <template id="stock-item-template">
+    <li class="task stock-item">
+      <div class="task-body">
+        <div class="task-title-row">
+          <span class="task-title stock-symbol"></span>
+          <span class="stock-currency"></span>
+        </div>
+        <div class="task-meta">
+          <span class="stock-price"></span>
+          <span class="stock-change"></span>
+        </div>
+      </div>
+      <button class="stock-remove" type="button" title="Remove" aria-label="Remove ticker">×</button>
     </li>
   </template>
 

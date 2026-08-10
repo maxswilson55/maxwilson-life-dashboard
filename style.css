@@ -340,6 +340,78 @@ body { padding-bottom: 3rem; }
 
 .news-time { color: var(--muted); font-variant-numeric: tabular-nums; }
 
+.stock-add-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.stock-add-row input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.stock-add-row input:focus { border-color: var(--border-active); }
+
+.stock-add-row button {
+  flex: 0 0 auto;
+  background: var(--accent-soft);
+  color: var(--accent-bright);
+  border: 1px solid var(--border-active);
+  border-radius: 6px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.stock-item { align-items: center; }
+
+.stock-symbol {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-currency {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-2);
+  padding: 0.1rem 0.4rem;
+  border-radius: 5px;
+}
+
+.stock-price {
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-change { font-variant-numeric: tabular-nums; font-weight: 600; }
+.stock-change.is-up { color: var(--personal-text); }
+.stock-change.is-down { color: var(--high); }
+.stock-change.is-flat { color: var(--muted); }
+
+.stock-remove {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 6px;
+  flex: 0 0 auto;
+}
+
+.stock-remove:hover { background: var(--surface-hover); color: var(--high); }
+
 .gmail-reason-badge {
   font-size: 0.66rem;
   font-weight: 600;

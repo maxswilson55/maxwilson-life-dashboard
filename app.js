@@ -717,6 +717,115 @@ fetch("/api/auth/gcal/status")
     calendarHint.textContent = "Calendar integration isn't set up on this deployment yet.";
   });
 
+const STOCKS_KEY = "lifeDashboard.stocks.v1";
+const DEFAULT_TICKERS = [
+  "GOOG",
+  "IE0002PG6CA6.SG",
+  "BTC-USD",
+  "HYPE32196-USD",
+  "MSFT",
+  "VUSDL.XC",
+  "TSLA",
+  "TSM",
+  "SGLD.L",
+  "EQQQ.MI",
+];
+
+function loadTickers() {
+  const raw = localStorage.getItem(STOCKS_KEY);
+  if (raw) return JSON.parse(raw);
+  localStorage.setItem(STOCKS_KEY, JSON.stringify(DEFAULT_TICKERS));
+  return DEFAULT_TICKERS.slice();
+}
+
+function saveTickers(tickers) {
+  localStorage.setItem(STOCKS_KEY, JSON.stringify(tickers));
+}
+
+const stockTemplate = document.getElementById("stock-item-template");
+const stockList = document.getElementById("stock-items");
+const stocksHint = document.getElementById("stocks-hint");
+const stocksRefreshBtn = document.getElementById("stocks-refresh-btn");
+const stockAddForm = document.getElementById("stock-add-form");
+const stockSymbolInput = document.getElementById("stock-symbol-input");
+
+function renderStockItem(quote) {
+  const node = stockTemplate.content.firstElementChild.cloneNode(true);
+  node.querySelector(".stock-symbol").textContent = quote.symbol;
+
+  const priceEl = node.querySelector(".stock-price");
+  const changeEl = node.querySelector(".stock-change");
+  const currencyEl = node.querySelector(".stock-currency");
+
+  if (quote.error) {
+    priceEl.textContent = "Unavailable";
+    changeEl.remove();
+    currencyEl.remove();
+  } else {
+    priceEl.textContent = quote.price.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    currencyEl.textContent = quote.currency;
+    if (quote.change != null && quote.changePercent != null) {
+      const sign = quote.change >= 0 ? "+" : "";
+      changeEl.textContent = `${sign}${quote.change.toFixed(2)} (${sign}${quote.changePercent.toFixed(2)}%)`;
+      changeEl.classList.add(quote.change > 0 ? "is-up" : quote.change < 0 ? "is-down" : "is-flat");
+    } else {
+      changeEl.remove();
+    }
+  }
+
+  node.querySelector(".stock-remove").addEventListener("click", () => {
+    const tickers = loadTickers().filter((s) => s !== quote.symbol);
+    saveTickers(tickers);
+    node.remove();
+    if (tickers.length === 0) {
+      stocksHint.textContent = "Add a ticker to start tracking.";
+      stocksHint.hidden = false;
+    }
+  });
+
+  return node;
+}
+
+async function loadStockQuotes() {
+  const tickers = loadTickers();
+  if (tickers.length === 0) {
+    stockList.innerHTML = "";
+    stocksHint.textContent = "Add a ticker to start tracking.";
+    stocksHint.hidden = false;
+    return;
+  }
+  stocksHint.textContent = "Loading quotes…";
+  stocksHint.hidden = false;
+  stockList.innerHTML = "";
+  try {
+    const res = await fetch(`/api/stocks/quotes?symbols=${encodeURIComponent(tickers.join(","))}`);
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const { quotes } = await res.json();
+    stocksHint.hidden = true;
+    quotes.forEach((quote) => stockList.appendChild(renderStockItem(quote)));
+  } catch (err) {
+    console.error("Stock quotes failed", err);
+    stocksHint.textContent = "Couldn't load quotes right now. Try refreshing.";
+    stocksHint.hidden = false;
+  }
+}
+
+stockAddForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const symbol = stockSymbolInput.value.trim().toUpperCase();
+  if (!symbol) return;
+  const tickers = loadTickers();
+  if (!tickers.includes(symbol)) {
+    tickers.push(symbol);
+    saveTickers(tickers);
+    loadStockQuotes();
+  }
+  stockSymbolInput.value = "";
+});
+
+stocksRefreshBtn.addEventListener("click", loadStockQuotes);
+loadStockQuotes();
+
 const newsTemplate = document.getElementById("news-item-template");
 const newsList = document.getElementById("news-items");
 const newsHint = document.getElementById("news-hint");
