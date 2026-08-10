@@ -865,12 +865,13 @@ async function loadNews() {
     const res = await fetch("/api/news/headlines");
     if (!res.ok) throw new Error(`status ${res.status}`);
     const { items } = await res.json();
-    if (items.length === 0) {
+    const topItems = items.slice(0, 5);
+    if (topItems.length === 0) {
       newsHint.textContent = "No headlines right now. Try refreshing.";
       newsHint.hidden = false;
     } else {
       newsHint.hidden = true;
-      items.forEach((item) => newsList.appendChild(renderNewsItem(item)));
+      topItems.forEach((item) => newsList.appendChild(renderNewsItem(item)));
     }
   } catch (err) {
     console.error("News fetch failed", err);
@@ -889,5 +890,12 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
+
+function updateTopbarHeightVar() {
+  const topbar = document.querySelector(".topbar");
+  document.documentElement.style.setProperty("--topbar-height", `${topbar.offsetHeight}px`);
+}
+updateTopbarHeightVar();
+window.addEventListener("resize", updateTopbarHeightVar);
 
 render();

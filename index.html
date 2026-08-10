@@ -24,6 +24,7 @@
   </header>
 
   <main class="content">
+   <div class="main-column">
     <section class="quick-add">
       <form id="task-form">
         <input type="text" id="task-title" placeholder="Add a task…" autocomplete="off" required />
@@ -105,6 +106,13 @@
       <ul class="task-list" id="gmail-suggestions"></ul>
     </section>
 
+    <section class="completed-section">
+      <button id="toggle-completed" class="link-btn" aria-expanded="false">Show completed (<span id="completed-count">0</span>)</button>
+      <ul class="task-list" id="list-completed" hidden></ul>
+    </section>
+   </div>
+
+   <aside class="sidebar">
     <section class="gmail-section" id="stocks-section">
       <div class="gmail-header">
         <h2>💹 Portfolio</h2>
@@ -126,11 +134,7 @@
       <p class="empty-hint" id="news-hint">Loading headlines…</p>
       <ul class="task-list" id="news-items"></ul>
     </section>
-
-    <section class="completed-section">
-      <button id="toggle-completed" class="link-btn" aria-expanded="false">Show completed (<span id="completed-count">0</span>)</button>
-      <ul class="task-list" id="list-completed" hidden></ul>
-    </section>
+   </aside>
   </main>
 
   <div class="toast" id="toast" hidden>
