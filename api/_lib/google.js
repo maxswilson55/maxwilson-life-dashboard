@@ -31,6 +31,9 @@ function headerValue(headers, name) {
   return h ? h.value : "";
 }
 
+const AUTOMATED_SENDER_PATTERN =
+  /no-?reply|do-?not-?reply|notification|jobs?-noreply|alerts?@|updates?@|newsletter|mailer@|automated|calendar-notification|confirmation@|noreply@|news@/i;
+
 async function searchThreads(accessToken, query, myEmail, reason) {
   const list = await gmailFetch(accessToken, `/threads?q=${encodeURIComponent(query)}&maxResults=15`);
   const threads = list.threads || [];
@@ -38,13 +41,18 @@ async function searchThreads(accessToken, query, myEmail, reason) {
   for (const t of threads) {
     const full = await gmailFetch(
       accessToken,
-      `/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`
+      `/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=List-Unsubscribe`
     );
     const lastMsg = full.messages[full.messages.length - 1];
     const from = headerValue(lastMsg.payload.headers, "From");
     const subject = headerValue(lastMsg.payload.headers, "Subject") || "(no subject)";
     const fromMe = from.toLowerCase().includes(myEmail.toLowerCase());
-    if (reason === "awaiting_reply" && fromMe) continue;
+    if (reason === "awaiting_reply") {
+      if (fromMe) continue;
+      const hasListUnsubscribe = Boolean(headerValue(lastMsg.payload.headers, "List-Unsubscribe"));
+      const looksAutomated = hasListUnsubscribe || AUTOMATED_SENDER_PATTERN.test(from);
+      if (looksAutomated) continue;
+    }
     results.push({
       threadId: t.id,
       subject,
@@ -90,7 +98,7 @@ export async function findActionItems(accessToken) {
 
   const [starred, awaitingReply] = await Promise.all([
     searchThreads(accessToken, "is:starred newer_than:60d", myEmail, "starred"),
-    searchThreads(accessToken, "in:inbox -is:chat newer_than:14d", myEmail, "awaiting_reply"),
+    searchThreads(accessToken, "in:inbox category:primary -is:chat newer_than:14d", myEmail, "awaiting_reply"),
   ]);
 
   const seen = new Set();
