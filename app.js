@@ -70,6 +70,39 @@ function toggleDone(id) {
   render();
 }
 
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function playCompletionAnimation(node) {
+  node.classList.add("is-done", "is-completing");
+  const burst = document.createElement("span");
+  burst.className = "check-burst";
+  burst.textContent = "✓";
+  node.appendChild(burst);
+}
+
+function handleTaskCheckboxChange(task, node) {
+  const completing = !task.done;
+  if (!completing || prefersReducedMotion) {
+    toggleDone(task.id);
+    return;
+  }
+
+  task.done = true;
+  task.completedAt = Date.now();
+  saveTasks(tasks);
+  playCompletionAnimation(node);
+
+  setTimeout(() => {
+    render();
+    showToast(`Completed "${task.title}"`, () => {
+      task.done = false;
+      task.completedAt = null;
+      saveTasks(tasks);
+      render();
+    });
+  }, 650);
+}
+
 function updateTask(id, { title, category, priority, due, notes }) {
   const t = tasks.find((x) => x.id === id);
   if (!t) return;
@@ -160,7 +193,7 @@ function renderTaskItem(task) {
 
   const checkbox = node.querySelector('input[type="checkbox"]');
   checkbox.checked = task.done;
-  checkbox.addEventListener("change", () => toggleDone(task.id));
+  checkbox.addEventListener("change", () => handleTaskCheckboxChange(task, node));
 
   const priorityBadge = node.querySelector(".priority-badge");
   priorityBadge.textContent = `${PRIORITY_EMOJI[task.priority]} ${task.priority}`;
@@ -266,7 +299,7 @@ function renderHeroTaskRow(task) {
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.checked = task.done;
-  checkbox.addEventListener("change", () => toggleDone(task.id));
+  checkbox.addEventListener("change", () => handleTaskCheckboxChange(task, wrap));
   const checkmark = document.createElement("span");
   checkmark.className = "checkmark";
   label.appendChild(checkbox);
