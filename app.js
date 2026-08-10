@@ -717,6 +717,62 @@ fetch("/api/auth/gcal/status")
     calendarHint.textContent = "Calendar integration isn't set up on this deployment yet.";
   });
 
+const newsTemplate = document.getElementById("news-item-template");
+const newsList = document.getElementById("news-items");
+const newsHint = document.getElementById("news-hint");
+const newsRefreshBtn = document.getElementById("news-refresh-btn");
+
+function formatRelativeTime(ts) {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function renderNewsItem(item) {
+  const node = newsTemplate.content.firstElementChild.cloneNode(true);
+
+  const badge = node.querySelector(".news-source-badge");
+  badge.textContent = item.source;
+  badge.classList.add(item.source === "FT" ? "source-ft" : "source-cnbc");
+
+  node.querySelector(".news-title").textContent = item.title;
+  node.querySelector(".news-time").textContent = formatRelativeTime(item.pubDate);
+  node.querySelector(".gmail-open-link").href = item.link;
+
+  return node;
+}
+
+async function loadNews() {
+  newsHint.textContent = "Loading headlines…";
+  newsHint.hidden = false;
+  newsList.innerHTML = "";
+  try {
+    const res = await fetch("/api/news/headlines");
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const { items } = await res.json();
+    if (items.length === 0) {
+      newsHint.textContent = "No headlines right now. Try refreshing.";
+      newsHint.hidden = false;
+    } else {
+      newsHint.hidden = true;
+      items.forEach((item) => newsList.appendChild(renderNewsItem(item)));
+    }
+  } catch (err) {
+    console.error("News fetch failed", err);
+    newsHint.textContent = "Couldn't load business news right now. Try refreshing.";
+    newsHint.hidden = false;
+  }
+}
+
+newsRefreshBtn.addEventListener("click", loadNews);
+loadNews();
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("service-worker.js").catch((err) => {

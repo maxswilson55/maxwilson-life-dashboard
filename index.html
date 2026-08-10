@@ -105,6 +105,15 @@
       <ul class="task-list" id="gmail-suggestions"></ul>
     </section>
 
+    <section class="gmail-section" id="news-section">
+      <div class="gmail-header">
+        <h2>📰 Business News</h2>
+        <button id="news-refresh-btn" class="link-btn">Refresh</button>
+      </div>
+      <p class="empty-hint" id="news-hint">Loading headlines…</p>
+      <ul class="task-list" id="news-items"></ul>
+    </section>
+
     <section class="completed-section">
       <button id="toggle-completed" class="link-btn" aria-expanded="false">Show completed (<span id="completed-count">0</span>)</button>
       <ul class="task-list" id="list-completed" hidden></ul>
@@ -186,6 +195,21 @@
         <div class="task-meta">
           <span class="cal-location"></span>
           <a class="gmail-open-link" target="_blank" rel="noopener">Open in Calendar</a>
+        </div>
+      </div>
+    </li>
+  </template>
+
+  <template id="news-item-template">
+    <li class="task gmail-item">
+      <span class="news-source-badge"></span>
+      <div class="task-body">
+        <div class="task-title-row">
+          <span class="task-title news-title"></span>
+        </div>
+        <div class="task-meta">
+          <span class="news-time"></span>
+          <a class="gmail-open-link" target="_blank" rel="noopener">Read</a>
         </div>
       </div>
     </li>

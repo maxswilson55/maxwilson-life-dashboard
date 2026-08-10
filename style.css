@@ -325,6 +325,21 @@ body { padding-bottom: 3rem; }
 
 .cal-day-header:first-child { margin-top: 0; }
 
+.news-source-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 5px;
+  flex: 0 0 auto;
+}
+
+.news-source-badge.source-cnbc { color: var(--low); background: var(--low-bg); }
+.news-source-badge.source-ft { color: #f4a89e; background: rgba(244, 168, 158, 0.15); }
+
+.news-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+
 .gmail-reason-badge {
   font-size: 0.66rem;
   font-weight: 600;
