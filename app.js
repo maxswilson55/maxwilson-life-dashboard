@@ -1575,8 +1575,21 @@ async function hydrateFromServer() {
   let stocksChanged = false;
 
   for (const result of results) {
-    if (result.status !== "fulfilled" || result.value.value == null) continue;
+    if (result.status !== "fulfilled") continue;
     const { serverKey, localKey, value } = result.value;
+
+    if (value == null) {
+      const localRaw = localStorage.getItem(localKey);
+      if (localRaw != null) {
+        try {
+          syncToServer(serverKey, JSON.parse(localRaw));
+        } catch (err) {
+          /* malformed local data, skip migration */
+        }
+      }
+      continue;
+    }
+
     localStorage.setItem(localKey, JSON.stringify(value));
     if (serverKey === "tasks") {
       tasks = value;
