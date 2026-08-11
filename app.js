@@ -5,6 +5,69 @@ const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 const PRIORITY_EMOJI = { high: "🔴", medium: "🟡", low: "🔵" };
 const CATEGORY_EMOJI = { work: "💼", personal: "🏡" };
 
+const QUOTES = [
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+  { text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
+  { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
+  { text: "Life is what happens when you're busy making other plans.", author: "John Lennon" },
+  { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+  { text: "It is during our darkest moments that we must focus to see the light.", author: "Aristotle" },
+  { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+  { text: "The only impossible journey is the one you never begin.", author: "Tony Robbins" },
+  { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
+  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+  { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+  { text: "Whether you think you can or you think you can't, you're right.", author: "Henry Ford" },
+  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+  { text: "Do not wait to strike till the iron is hot, but make it hot by striking.", author: "William Butler Yeats" },
+  { text: "Quality is not an act, it is a habit.", author: "Aristotle" },
+  { text: "The best way to predict the future is to create it.", author: "Abraham Lincoln" },
+  { text: "You miss 100% of the shots you don't take.", author: "Wayne Gretzky" },
+  { text: "Change your thoughts and you change your world.", author: "Norman Vincent Peale" },
+  { text: "Everything you've ever wanted is on the other side of fear.", author: "George Addair" },
+  { text: "Act as if what you do makes a difference. It does.", author: "William James" },
+  { text: "Success usually comes to those who are too busy to be looking for it.", author: "Henry David Thoreau" },
+  { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
+  { text: "The harder I work, the luckier I get.", author: "Samuel Goldwyn" },
+  { text: "I find that the harder I work, the more luck I seem to have.", author: "Thomas Jefferson" },
+  { text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin D. Roosevelt" },
+  { text: "What we think, we become.", author: "Buddha" },
+  { text: "You are never too old to set another goal or to dream a new dream.", author: "C.S. Lewis" },
+  { text: "Twenty years from now you will be more disappointed by the things you didn't do than by the ones you did.", author: "Mark Twain" },
+  { text: "Not all those who wander are lost.", author: "J.R.R. Tolkien" },
+  { text: "Perfection is not attainable, but if we chase perfection we can catch excellence.", author: "Vince Lombardi" },
+  { text: "The journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
+  { text: "If you want to lift yourself up, lift up someone else.", author: "Booker T. Washington" },
+  { text: "Knowing is not enough; we must apply. Willing is not enough; we must do.", author: "Johann Wolfgang von Goethe" },
+  { text: "Either you run the day, or the day runs you.", author: "Jim Rohn" },
+  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+  { text: "Nothing is impossible. The word itself says 'I'm possible'.", author: "Audrey Hepburn" },
+  { text: "There is only one way to avoid criticism: do nothing, say nothing, and be nothing.", author: "Aristotle" },
+  { text: "The best revenge is massive success.", author: "Frank Sinatra" },
+  { text: "People often say that motivation doesn't last. Well, neither does bathing — that's why we recommend it daily.", author: "Zig Ziglar" },
+  { text: "The mind is everything. What you think you become.", author: "Buddha" },
+  { text: "Limit your 'always' and your 'nevers'.", author: "Amy Poehler" },
+  { text: "Every strike brings me closer to the next home run.", author: "Babe Ruth" },
+  { text: "Definiteness of purpose is the starting point of all achievement.", author: "W. Clement Stone" },
+  { text: "Life is 10% what happens to us and 90% how we react to it.", author: "Charles R. Swindoll" },
+  { text: "Setting goals is the first step in turning the invisible into the visible.", author: "Tony Robbins" },
+  { text: "Fall seven times, stand up eight.", author: "Japanese Proverb" },
+  { text: "When one door of happiness closes, another opens.", author: "Helen Keller" },
+  { text: "Everything has beauty, but not everyone can see.", author: "Confucius" },
+  { text: "How wonderful it is that nobody need wait a single moment before starting to improve the world.", author: "Anne Frank" },
+  { text: "Dream big and dare to fail.", author: "Norman Vaughan" },
+  { text: "Our lives begin to end the day we become silent about things that matter.", author: "Martin Luther King Jr." },
+  { text: "The only person you are destined to become is the person you decide to be.", author: "Ralph Waldo Emerson" },
+  { text: "Go confidently in the direction of your dreams. Live the life you have imagined.", author: "Henry David Thoreau" },
+  { text: "When I let go of what I am, I become what I might be.", author: "Lao Tzu" },
+  { text: "Life shrinks or expands in proportion to one's courage.", author: "Anaïs Nin" },
+  { text: "If you look at what you have in life, you'll always have more.", author: "Oprah Winfrey" },
+  { text: "If you do what you always did, you will get what you always got.", author: "Anonymous" },
+  { text: "Security is mostly a superstition. Life is either a daring adventure or nothing.", author: "Helen Keller" },
+  { text: "The only way to get away from the crowd is to lead it.", author: "Bill Bristow" },
+  { text: "The most difficult thing is the decision to act, the rest is merely tenacity.", author: "Amelia Earhart" },
+];
+
 /** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null}} Task */
 
 function loadTasks() {
@@ -1276,5 +1339,70 @@ async function enablePush() {
 
 pushEnableBtn.addEventListener("click", enablePush);
 initPushUI();
+
+function dayOfYear(date) {
+  const start = new Date(date.getFullYear(), 0, 0);
+  return Math.floor((date - start) / 86400000);
+}
+
+function renderQuote() {
+  const quote = QUOTES[dayOfYear(new Date()) % QUOTES.length];
+  const block = document.getElementById("quote-block");
+  block.innerHTML = "";
+  const p = document.createElement("p");
+  p.className = "quote-text";
+  p.textContent = `"${quote.text}"`;
+  const cite = document.createElement("cite");
+  cite.className = "quote-author";
+  cite.textContent = `— ${quote.author}`;
+  block.appendChild(p);
+  block.appendChild(cite);
+}
+
+async function loadOnThisDay() {
+  const historyEl = document.getElementById("history-block");
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${mm}/${dd}`);
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    const events = data.events || [];
+    if (events.length === 0) {
+      historyEl.textContent = "No history fact available today.";
+      return;
+    }
+    const event = events[dayOfYear(now) % events.length];
+    const page = event.pages && event.pages[0];
+    const link = page && page.content_urls && page.content_urls.desktop ? page.content_urls.desktop.page : null;
+
+    historyEl.innerHTML = "";
+    const yearSpan = document.createElement("span");
+    yearSpan.className = "history-year";
+    yearSpan.textContent = event.year;
+    const textSpan = document.createElement("span");
+    textSpan.className = "history-text";
+    textSpan.textContent = ` ${event.text}`;
+    historyEl.appendChild(yearSpan);
+    historyEl.appendChild(textSpan);
+    if (link) {
+      historyEl.appendChild(document.createElement("br"));
+      const a = document.createElement("a");
+      a.href = link;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.className = "gmail-open-link";
+      a.textContent = "Read more";
+      historyEl.appendChild(a);
+    }
+  } catch (err) {
+    console.error("On this day fetch failed", err);
+    historyEl.textContent = "Couldn't load today's history fact.";
+  }
+}
+
+renderQuote();
+loadOnThisDay();
 
 render();
