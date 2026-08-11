@@ -412,6 +412,38 @@ body { padding-bottom: 3rem; }
 
 .history-text { color: var(--text); }
 
+.idea-url-input { width: 100%; margin-bottom: 0.5rem; }
+
+.idea-category-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.12rem 0.5rem;
+  border-radius: 5px;
+  flex: 0 0 auto;
+}
+
+.idea-cat-life-hack { color: var(--personal-text); background: var(--personal-bg); }
+.idea-cat-business-idea { color: var(--accent-bright); background: var(--accent-soft); }
+.idea-cat-other { color: var(--muted); background: var(--surface-2); }
+
+.idea-source { color: var(--muted); font-weight: 600; }
+.idea-note { color: var(--muted); }
+
+.idea-delete {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 6px;
+  flex: 0 0 auto;
+}
+
+.idea-delete:hover { background: var(--surface-hover); color: var(--high); }
+
 .quick-add {
   background: var(--surface);
   border: 1px solid var(--border);

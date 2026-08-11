@@ -1405,4 +1405,124 @@ async function loadOnThisDay() {
 renderQuote();
 loadOnThisDay();
 
+const IDEAS_KEY = "lifeDashboard.ideas.v1";
+const IDEA_CATEGORY_LABELS = { "life-hack": "Life Hack", "business-idea": "Business Idea", other: "Other" };
+
+function loadIdeas() {
+  try {
+    return JSON.parse(localStorage.getItem(IDEAS_KEY) || "[]");
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveIdeasList(ideas) {
+  localStorage.setItem(IDEAS_KEY, JSON.stringify(ideas));
+}
+
+function detectIdeaSource(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    if (host.includes("instagram.com")) return "Instagram";
+    if (host.includes("tiktok.com")) return "TikTok";
+    return host;
+  } catch (err) {
+    return "Link";
+  }
+}
+
+const ideaTemplate = document.getElementById("idea-item-template");
+const ideaUrlInput = document.getElementById("idea-url-input");
+const ideaNoteInput = document.getElementById("idea-note-input");
+const ideaSubmitBtn = document.getElementById("idea-submit-btn");
+const ideaStatus = document.getElementById("idea-status");
+const ideaList = document.getElementById("idea-list");
+const ideaHint = document.getElementById("idea-hint");
+
+function renderIdeaItem(idea) {
+  const node = ideaTemplate.content.firstElementChild.cloneNode(true);
+
+  const badge = node.querySelector(".idea-category-badge");
+  badge.textContent = IDEA_CATEGORY_LABELS[idea.category] || "Other";
+  badge.classList.add(`idea-cat-${idea.category || "other"}`);
+
+  node.querySelector(".idea-title").textContent = idea.title || idea.note || idea.url;
+  node.querySelector(".idea-source").textContent = idea.source;
+
+  const noteEl = node.querySelector(".idea-note");
+  if (idea.title && idea.note) {
+    noteEl.textContent = idea.note;
+  } else {
+    noteEl.remove();
+  }
+
+  node.querySelector(".idea-link").href = idea.url;
+
+  node.querySelector(".idea-delete").addEventListener("click", () => {
+    saveIdeasList(loadIdeas().filter((i) => i.id !== idea.id));
+    node.remove();
+    if (loadIdeas().length === 0) ideaHint.hidden = false;
+  });
+
+  return node;
+}
+
+function renderIdeas() {
+  const ideas = loadIdeas();
+  ideaList.innerHTML = "";
+  if (ideas.length === 0) {
+    ideaHint.hidden = false;
+  } else {
+    ideaHint.hidden = true;
+    ideas.forEach((idea) => ideaList.appendChild(renderIdeaItem(idea)));
+  }
+}
+
+async function submitIdea() {
+  const url = ideaUrlInput.value.trim();
+  const note = ideaNoteInput.value.trim();
+  if (!url) return;
+
+  ideaSubmitBtn.disabled = true;
+  ideaStatus.textContent = "Saving…";
+
+  let category = "other";
+  let title = null;
+  try {
+    const res = await fetch("/api/ideas/categorize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      category = data.category || "other";
+      title = data.title || null;
+    }
+  } catch (err) {
+    console.warn("Idea categorize failed, saving uncategorized", err);
+  }
+
+  const ideas = loadIdeas();
+  ideas.unshift({
+    id: makeId(),
+    url,
+    note,
+    title,
+    category,
+    source: detectIdeaSource(url),
+    createdAt: Date.now(),
+  });
+  saveIdeasList(ideas);
+
+  ideaUrlInput.value = "";
+  ideaNoteInput.value = "";
+  ideaStatus.textContent = "";
+  ideaSubmitBtn.disabled = false;
+  renderIdeas();
+}
+
+ideaSubmitBtn.addEventListener("click", submitIdea);
+renderIdeas();
+
 render();

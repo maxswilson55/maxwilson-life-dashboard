@@ -162,6 +162,20 @@
       <button id="toggle-completed" class="link-btn" aria-expanded="false">Show completed (<span id="completed-count">0</span>)</button>
       <ul class="task-list" id="list-completed" hidden></ul>
     </section>
+
+    <section class="gmail-section" id="ideas-section">
+      <div class="gmail-header">
+        <h2>💡 Saved Ideas</h2>
+      </div>
+      <input type="text" id="idea-url-input" class="journal-textarea idea-url-input" placeholder="Paste a link (Instagram, TikTok, anything)" />
+      <textarea id="idea-note-input" class="journal-textarea" rows="2" placeholder="Quick note on what it is — helps me sort it into Life Hack / Business Idea / Other"></textarea>
+      <div class="journal-actions">
+        <button type="button" id="idea-submit-btn" class="journal-submit-btn">Save idea</button>
+        <span class="journal-status" id="idea-status"></span>
+      </div>
+      <p class="empty-hint" id="idea-hint">Nothing saved yet.</p>
+      <ul class="task-list" id="idea-list"></ul>
+    </section>
    </div>
 
    <aside class="sidebar">
@@ -299,6 +313,23 @@
       <div class="gmail-actions">
         <button class="gmail-add-btn" type="button">+ Add as task</button>
       </div>
+    </li>
+  </template>
+
+  <template id="idea-item-template">
+    <li class="task idea-item">
+      <div class="task-body">
+        <div class="task-title-row">
+          <span class="idea-category-badge"></span>
+          <span class="task-title idea-title"></span>
+        </div>
+        <div class="task-meta">
+          <span class="idea-source"></span>
+          <span class="idea-note"></span>
+          <a class="gmail-open-link idea-link" target="_blank" rel="noopener">Open</a>
+        </div>
+      </div>
+      <button class="idea-delete" type="button" title="Delete" aria-label="Delete idea">×</button>
     </li>
   </template>
 
