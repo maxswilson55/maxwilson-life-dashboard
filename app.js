@@ -82,6 +82,7 @@ function loadTasks() {
 
 function saveTasks(tasks) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  syncToServer("tasks", tasks);
 }
 
 let tasks = loadTasks();
@@ -215,6 +216,7 @@ function showToast(message, onUndo, action) {
   toastActionHandler = action ? action.handler : null;
   toastActionBtn.textContent = action ? action.label : "";
   toastActionBtn.hidden = !action;
+  toastUndoBtn.hidden = !onUndo;
   toastEl.hidden = false;
   toastTimeoutId = setTimeout(() => {
     toastEl.hidden = true;
@@ -238,6 +240,26 @@ toastActionBtn.addEventListener("click", () => {
   toastUndoHandler = null;
   toastActionHandler = null;
 });
+
+let syncFailureToastAt = 0;
+
+async function syncToServer(key, value) {
+  try {
+    const res = await fetch(`/api/sync/${key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+  } catch (err) {
+    console.error(`Sync to server failed for "${key}"`, err);
+    const now = Date.now();
+    if (now - syncFailureToastAt > 4000) {
+      syncFailureToastAt = now;
+      showToast("⚠️ Couldn't sync — saved on this device only. Check your connection.");
+    }
+  }
+}
 
 function inScope(task) {
   return scope === "all" || task.category === scope;
@@ -1003,6 +1025,7 @@ function loadTickers() {
 
 function saveTickers(tickers) {
   localStorage.setItem(STOCKS_KEY, JSON.stringify(tickers));
+  syncToServer("stocks", tickers);
 }
 
 const stockTemplate = document.getElementById("stock-item-template");
@@ -1172,6 +1195,7 @@ function saveJournalEntry(dateISO, entry) {
   const all = loadJournal();
   all[dateISO] = entry;
   localStorage.setItem(JOURNAL_KEY, JSON.stringify(all));
+  syncToServer("journal", all);
 }
 
 const journalInput = document.getElementById("journal-input");
@@ -1418,6 +1442,7 @@ function loadIdeas() {
 
 function saveIdeasList(ideas) {
   localStorage.setItem(IDEAS_KEY, JSON.stringify(ideas));
+  syncToServer("ideas", ideas);
 }
 
 function detectIdeaSource(url) {
@@ -1526,3 +1551,49 @@ ideaSubmitBtn.addEventListener("click", submitIdea);
 renderIdeas();
 
 render();
+
+const SYNC_KEYS = {
+  tasks: STORAGE_KEY,
+  journal: JOURNAL_KEY,
+  ideas: IDEAS_KEY,
+  stocks: STOCKS_KEY,
+};
+
+async function hydrateFromServer() {
+  const results = await Promise.allSettled(
+    Object.entries(SYNC_KEYS).map(async ([serverKey, localKey]) => {
+      const res = await fetch(`/api/sync/${serverKey}`);
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const { value } = await res.json();
+      return { serverKey, localKey, value };
+    })
+  );
+
+  let tasksChanged = false;
+  let ideasChanged = false;
+  let journalChanged = false;
+  let stocksChanged = false;
+
+  for (const result of results) {
+    if (result.status !== "fulfilled" || result.value.value == null) continue;
+    const { serverKey, localKey, value } = result.value;
+    localStorage.setItem(localKey, JSON.stringify(value));
+    if (serverKey === "tasks") {
+      tasks = value;
+      tasksChanged = true;
+    } else if (serverKey === "ideas") {
+      ideasChanged = true;
+    } else if (serverKey === "journal") {
+      journalChanged = true;
+    } else if (serverKey === "stocks") {
+      stocksChanged = true;
+    }
+  }
+
+  if (tasksChanged) render();
+  if (ideasChanged) renderIdeas();
+  if (journalChanged) initJournal();
+  if (stocksChanged) loadStockQuotes();
+}
+
+hydrateFromServer();
