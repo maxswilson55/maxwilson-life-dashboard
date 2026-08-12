@@ -478,7 +478,7 @@ function heatLevel(count) {
 }
 
 function renderHeatmap() {
-  const weeks = 10;
+  const weeks = 6;
   const totalDays = weeks * 7;
   const counts = {};
   tasks.forEach((t) => {
