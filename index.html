@@ -56,38 +56,45 @@
         <button type="button" class="link-btn" id="followup-cancel-btn">Cancel</button>
       </div>
       <form id="task-form">
-        <input type="text" id="task-title" placeholder="Add a task…" autocomplete="off" required />
-        <div class="quick-add-row">
-          <select id="task-category" aria-label="Category">
-            <option value="work">💼 Work</option>
-            <option value="personal">🏡 Personal</option>
-          </select>
-          <select id="task-priority" aria-label="Priority">
-            <option value="high">🔴 High</option>
-            <option value="medium" selected>🟡 Medium</option>
-            <option value="low">🔵 Low</option>
-          </select>
+        <div class="quick-add-input-row">
+          <input type="text" id="task-title" placeholder='Add a task… try "chase dentist letter tomorrow p1 #work"' autocomplete="off" required />
           <button type="submit" id="task-submit-btn">Add</button>
           <button type="button" id="task-cancel-edit-btn" class="link-btn" hidden>Cancel</button>
         </div>
-        <div class="date-row">
-          <div class="date-chips" id="date-chips">
-            <button type="button" class="date-chip" data-offset="0">Today</button>
-            <button type="button" class="date-chip" data-offset="1">Tomorrow</button>
-            <button type="button" class="date-chip" data-offset="3">In 3 days</button>
-            <button type="button" class="date-chip" data-offset="4">In 4 days</button>
-            <button type="button" class="date-chip date-chip-pick" id="pick-date-btn">📅 <span id="picked-date-label">Choose date…</span></button>
-            <button type="button" class="date-chip date-chip-clear" id="clear-date-btn" hidden>✕</button>
+        <p class="quick-add-preview" id="quick-add-preview" hidden></p>
+        <button type="button" id="advanced-toggle-btn" class="link-btn quick-add-advanced-toggle" aria-expanded="false">▸ More options</button>
+        <div class="quick-add-advanced" id="quick-add-advanced" hidden>
+          <div class="quick-add-row">
+            <select id="task-category" aria-label="Category">
+              <option value="work">💼 Work</option>
+              <option value="personal">🏡 Personal</option>
+            </select>
+            <select id="task-priority" aria-label="Priority">
+              <option value="high">🔴 High</option>
+              <option value="medium" selected>🟡 Medium</option>
+              <option value="low">🔵 Low</option>
+            </select>
           </div>
-          <input type="date" id="task-due" aria-label="Due date" class="native-date-input" />
+          <div class="date-row">
+            <div class="date-chips" id="date-chips">
+              <button type="button" class="date-chip" data-offset="0">Today</button>
+              <button type="button" class="date-chip" data-offset="1">Tomorrow</button>
+              <button type="button" class="date-chip" data-offset="3">In 3 days</button>
+              <button type="button" class="date-chip" data-offset="4">In 4 days</button>
+              <button type="button" class="date-chip date-chip-pick" id="pick-date-btn">📅 <span id="picked-date-label">Choose date…</span></button>
+              <button type="button" class="date-chip date-chip-clear" id="clear-date-btn" hidden>✕</button>
+            </div>
+            <input type="date" id="task-due" aria-label="Due date" class="native-date-input" />
+          </div>
+          <textarea id="task-notes" placeholder="Notes (optional)" rows="2"></textarea>
         </div>
-        <textarea id="task-notes" placeholder="Notes (optional)" rows="2"></textarea>
       </form>
     </section>
 
     <section class="board" id="board">
       <div class="column" id="col-today">
         <h2>Today &amp; Overdue</h2>
+        <p class="empty-hint today-fallback-note" id="today-fallback-note" hidden>Nothing due — here's what's been waiting longest:</p>
         <ul class="task-list" id="list-today"></ul>
         <p class="empty-hint" id="hint-today">Nothing due — you're clear.</p>
       </div>

@@ -87,6 +87,7 @@ function saveTasks(tasks) {
 
 let tasks = loadTasks();
 let scope = localStorage.getItem(SCOPE_KEY) || "all";
+let statFilter = null;
 
 function toISO(d) {
   const y = d.getFullYear();
@@ -103,6 +104,125 @@ function offsetISO(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return toISO(d);
+}
+
+function isSameMonth(timestamp) {
+  const d = new Date(timestamp);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+
+function backlogScore(task) {
+  const ageDays = (Date.now() - task.createdAt) / 86400000;
+  const priorityWeight = { high: 3, medium: 2, low: 1 }[task.priority] || 1;
+  const followUpBoost = task.followUpOf ? 1.3 : 1;
+  return ageDays * priorityWeight * followUpBoost;
+}
+
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const WEEKDAY_ABBR = { sun: 0, mon: 1, tue: 2, tues: 2, wed: 3, thu: 4, thur: 4, thurs: 4, fri: 5, sat: 6 };
+const MONTH_ABBR = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, sept: 8, oct: 9, nov: 10, dec: 11,
+};
+
+function nextWeekdayISO(targetDow) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const diff = (targetDow - d.getDay() + 7) % 7;
+  d.setDate(d.getDate() + diff);
+  return toISO(d);
+}
+
+function monthDayISO(monthIdx, day) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  let year = now.getFullYear();
+  let d = new Date(year, monthIdx, day);
+  if (d < now) {
+    year += 1;
+    d = new Date(year, monthIdx, day);
+  }
+  return toISO(d);
+}
+
+function parseQuickAdd(rawText) {
+  let text = rawText;
+  let due = null;
+  let priority = null;
+  let category = null;
+
+  text = text.replace(/\bp1\b/i, () => {
+    priority = "high";
+    return "";
+  });
+  text = text.replace(/\bp2\b/i, () => {
+    priority = "medium";
+    return "";
+  });
+  text = text.replace(/\bp3\b/i, () => {
+    priority = "low";
+    return "";
+  });
+
+  text = text.replace(/#work\b/i, () => {
+    category = "work";
+    return "";
+  });
+  text = text.replace(/#personal\b/i, () => {
+    category = "personal";
+    return "";
+  });
+
+  text = text.replace(/\bin\s+(\d+)\s+days?\b/i, (_m, n) => {
+    due = offsetISO(Number(n));
+    return "";
+  });
+
+  if (!due) {
+    text = text.replace(/\btomorrow\b/i, () => {
+      due = offsetISO(1);
+      return "";
+    });
+  }
+  if (!due) {
+    text = text.replace(/\b(today|tonight)\b/i, () => {
+      due = offsetISO(0);
+      return "";
+    });
+  }
+  if (!due) {
+    text = text.replace(
+      /\b(sun|sunday|mon|monday|tue|tues|tuesday|wed|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday)\b/i,
+      (m) => {
+        const key = m.toLowerCase();
+        const dow = key in WEEKDAY_ABBR ? WEEKDAY_ABBR[key] : WEEKDAYS.indexOf(key);
+        due = nextWeekdayISO(dow);
+        return "";
+      }
+    );
+  }
+  if (!due) {
+    const monthPattern =
+      "(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)";
+    let m = text.match(new RegExp(`\\b${monthPattern}\\s+(\\d{1,2})\\b`, "i"));
+    let monthFirst = true;
+    if (!m) {
+      m = text.match(new RegExp(`\\b(\\d{1,2})\\s+${monthPattern}\\b`, "i"));
+      monthFirst = false;
+    }
+    if (m) {
+      const monthStr = (monthFirst ? m[1] : m[2]).toLowerCase().slice(0, 3);
+      const day = Number(monthFirst ? m[2] : m[1]);
+      const monthIdx = MONTH_ABBR[monthStr];
+      if (monthIdx != null && day >= 1 && day <= 31) {
+        due = monthDayISO(monthIdx, day);
+        text = text.replace(m[0], "");
+      }
+    }
+  }
+
+  const cleanTitle = text.replace(/\s{2,}/g, " ").trim();
+  return { cleanTitle, due, priority, category };
 }
 
 function makeId() {
@@ -394,23 +514,69 @@ function render() {
   const active = visible.filter((t) => !t.done);
   const today = todayISO();
 
-  const todayAndOverdue = sortTasks(active.filter((t) => t.due && t.due <= today));
-  const upcoming = sortTasks(active.filter((t) => t.due && t.due > today));
-  const someday = sortTasks(active.filter((t) => !t.due));
-  const completed = visible
+  let todayAndOverdue = sortTasks(active.filter((t) => t.due && t.due <= today));
+  let upcoming = sortTasks(active.filter((t) => t.due && t.due > today));
+  let someday = sortTasks(active.filter((t) => !t.due));
+  let completed = visible
     .filter((t) => t.done)
     .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
-  renderList(document.getElementById("list-today"), document.getElementById("hint-today"), todayAndOverdue, "today");
+  if (statFilter === "dueToday") {
+    upcoming = [];
+    someday = [];
+  } else if (statFilter === "high") {
+    todayAndOverdue = todayAndOverdue.filter((t) => t.priority === "high");
+    upcoming = upcoming.filter((t) => t.priority === "high");
+    someday = someday.filter((t) => t.priority === "high");
+  } else if (statFilter === "doneMonth") {
+    completed = completed.filter((t) => t.completedAt && isSameMonth(t.completedAt));
+  }
+
+  const rankedBacklog = someday.slice().sort((a, b) => backlogScore(b) - backlogScore(a));
+
+  renderTodayColumn(todayAndOverdue, rankedBacklog);
   renderList(document.getElementById("list-upcoming"), document.getElementById("hint-upcoming"), upcoming, "upcoming");
   renderList(document.getElementById("list-someday"), document.getElementById("hint-someday"), someday, "someday");
   renderList(document.getElementById("list-completed"), null, completed);
 
   document.getElementById("completed-count").textContent = completed.length;
 
+  if (statFilter === "doneMonth") {
+    const completedList = document.getElementById("list-completed");
+    completedList.hidden = false;
+    toggleCompletedBtn.setAttribute("aria-expanded", "true");
+  }
+
   renderStats(active, todayAndOverdue, completed);
-  renderHero(todayAndOverdue, upcoming, someday);
+  renderHero(todayAndOverdue, upcoming, rankedBacklog);
   renderHeatmap();
+}
+
+function renderTodayColumn(todayAndOverdue, rankedBacklog) {
+  const listEl = document.getElementById("list-today");
+  const hintEl = document.getElementById("hint-today");
+  const fallbackNoteEl = document.getElementById("today-fallback-note");
+
+  if (todayAndOverdue.length > 0) {
+    fallbackNoteEl.hidden = true;
+    renderList(listEl, hintEl, todayAndOverdue, "today");
+    return;
+  }
+
+  const suggestions = rankedBacklog.slice(0, 3);
+
+  if (suggestions.length === 0) {
+    fallbackNoteEl.hidden = true;
+    renderList(listEl, hintEl, [], "today");
+    return;
+  }
+
+  fallbackNoteEl.hidden = false;
+  hintEl.hidden = true;
+  listEl.innerHTML = "";
+  suggestions.forEach((t) => listEl.appendChild(renderTaskItem(t)));
+  const existingToggle = listEl.parentElement.querySelector('.section-toggle[data-section="today"]');
+  if (existingToggle) existingToggle.remove();
 }
 
 function getGreeting() {
@@ -460,7 +626,7 @@ function renderHeroTaskRow(task) {
   return wrap;
 }
 
-function renderHero(todayAndOverdue, upcoming, someday) {
+function renderHero(todayAndOverdue, upcoming, rankedBacklog) {
   const greeting = getGreeting();
   document.getElementById("hero-greeting").textContent = `${greeting.emoji} ${greeting.text}`;
   document.getElementById("hero-date").textContent = new Date().toLocaleDateString(undefined, {
@@ -469,7 +635,7 @@ function renderHero(todayAndOverdue, upcoming, someday) {
     day: "numeric",
   });
 
-  const nextTask = todayAndOverdue[0] || upcoming[0] || someday[0] || null;
+  const nextTask = todayAndOverdue[0] || upcoming[0] || rankedBacklog[0] || null;
   const nextActionEl = document.getElementById("hero-next-action");
   nextActionEl.innerHTML = "";
 
@@ -526,20 +692,39 @@ function renderHeatmap() {
 
 function renderStats(active, todayAndOverdue, completed) {
   const highCount = active.filter((t) => t.priority === "high").length;
+  const doneThisMonthCount = completed.filter((t) => t.completedAt && isSameMonth(t.completedAt)).length;
   const stats = [
-    { label: `${active.length} open`, cls: "" },
-    { label: `${todayAndOverdue.length} due today/overdue`, cls: "priority-high" },
-    { label: `${highCount} high priority`, cls: "priority-high" },
-    { label: `${completed.length} done`, cls: "priority-low" },
+    { key: null, label: `${active.length} open`, cls: "" },
+    { key: "dueToday", label: `${todayAndOverdue.length} due today/overdue`, cls: "priority-high" },
+    { key: "high", label: `${highCount} high priority`, cls: "priority-high" },
+    { key: "doneMonth", label: `${doneThisMonthCount} done this month`, cls: "priority-low" },
   ];
   const strip = document.getElementById("stats-strip");
   strip.innerHTML = "";
   stats.forEach((s) => {
-    const pill = document.createElement("span");
+    const pill = document.createElement("button");
+    pill.type = "button";
     pill.className = `stat-pill ${s.cls}`;
+    pill.classList.toggle("is-active", s.key !== null && statFilter === s.key);
     pill.textContent = s.label;
+    pill.addEventListener("click", () => {
+      statFilter = statFilter === s.key ? null : s.key;
+      render();
+    });
     strip.appendChild(pill);
   });
+
+  if (statFilter) {
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "link-btn stat-clear-btn";
+    clearBtn.textContent = "✕ Clear filter";
+    clearBtn.addEventListener("click", () => {
+      statFilter = null;
+      render();
+    });
+    strip.appendChild(clearBtn);
+  }
 }
 
 let editingTaskId = null;
@@ -549,11 +734,44 @@ const taskCancelEditBtn = document.getElementById("task-cancel-edit-btn");
 const followupBanner = document.getElementById("followup-banner");
 const followupParentTitle = document.getElementById("followup-parent-title");
 const followupCancelBtn = document.getElementById("followup-cancel-btn");
+const advancedToggleBtn = document.getElementById("advanced-toggle-btn");
+const quickAddAdvanced = document.getElementById("quick-add-advanced");
+const quickAddPreview = document.getElementById("quick-add-preview");
+
+function setAdvancedOpen(open) {
+  quickAddAdvanced.hidden = !open;
+  advancedToggleBtn.textContent = open ? "▾ Fewer options" : "▸ More options";
+  advancedToggleBtn.setAttribute("aria-expanded", String(open));
+}
+
+advancedToggleBtn.addEventListener("click", () => {
+  setAdvancedOpen(quickAddAdvanced.hidden);
+});
+
+function updateQuickAddPreview() {
+  const raw = document.getElementById("task-title").value;
+  const parsed = parseQuickAdd(raw);
+  const bits = [];
+  if (parsed.due) bits.push(`📅 ${formatDue(parsed.due) || parsed.due}`);
+  if (parsed.priority) bits.push(`${PRIORITY_EMOJI[parsed.priority]} ${parsed.priority}`);
+  if (parsed.category) bits.push(`${CATEGORY_EMOJI[parsed.category]} ${parsed.category}`);
+  if (bits.length === 0) {
+    quickAddPreview.hidden = true;
+    quickAddPreview.textContent = "";
+  } else {
+    quickAddPreview.hidden = false;
+    quickAddPreview.textContent = bits.join(" · ");
+  }
+}
+
+document.getElementById("task-title").addEventListener("input", updateQuickAddPreview);
 
 function resetForm() {
   document.getElementById("task-form").reset();
   document.getElementById("task-priority").value = "medium";
   updateDateUI();
+  setAdvancedOpen(false);
+  updateQuickAddPreview();
 }
 
 function enterEditMode(task) {
@@ -565,6 +783,8 @@ function enterEditMode(task) {
   document.getElementById("task-notes").value = task.notes || "";
   dueInput.value = task.due || "";
   updateDateUI();
+  setAdvancedOpen(true);
+  updateQuickAddPreview();
   taskSubmitBtn.textContent = "Save";
   taskCancelEditBtn.hidden = false;
   document.querySelector(".quick-add").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -599,13 +819,14 @@ followupCancelBtn.addEventListener("click", exitFollowUpMode);
 
 document.getElementById("task-form").addEventListener("submit", (e) => {
   e.preventDefault();
-  const title = document.getElementById("task-title").value;
-  if (!title.trim()) return;
+  const rawTitle = document.getElementById("task-title").value;
+  if (!rawTitle.trim()) return;
+  const parsed = parseQuickAdd(rawTitle);
   const payload = {
-    title,
-    category: document.getElementById("task-category").value,
-    priority: document.getElementById("task-priority").value,
-    due: document.getElementById("task-due").value,
+    title: parsed.cleanTitle || rawTitle,
+    category: parsed.category || document.getElementById("task-category").value,
+    priority: parsed.priority || document.getElementById("task-priority").value,
+    due: parsed.due || document.getElementById("task-due").value,
     notes: document.getElementById("task-notes").value,
   };
   if (editingTaskId) {
