@@ -1839,6 +1839,114 @@ async function loadOnThisDay() {
 renderQuote();
 loadOnThisDay();
 
+const HERO_BRIEF_KEY = "lifeDashboard.brief.v1";
+const heroBriefEl = document.getElementById("hero-brief");
+
+function loadBriefCache() {
+  try {
+    return JSON.parse(localStorage.getItem(HERO_BRIEF_KEY) || "null");
+  } catch (err) {
+    return null;
+  }
+}
+
+function saveBriefCache(cache) {
+  localStorage.setItem(HERO_BRIEF_KEY, JSON.stringify(cache));
+  syncToServer("brief", cache);
+}
+
+function renderBrief(text) {
+  heroBriefEl.textContent = `✨ ${text}`;
+  heroBriefEl.hidden = false;
+}
+
+function buildBriefStats() {
+  const today = todayISO();
+  const activeTasks = tasks.filter((t) => !t.done);
+  const dueTodayTasks = activeTasks.filter((t) => t.due && t.due <= today);
+  const overdueCount = activeTasks.filter((t) => t.due && t.due < today).length;
+
+  const waitingStale = activeTasks
+    .filter((t) => t.waitingOn && waitingDays(t) >= WAITING_ESCALATE_DAYS)
+    .map((t) => ({ title: t.title, waitingOn: t.waitingOn, days: Math.floor(waitingDays(t)) }));
+
+  const seenRoots = new Set();
+  const stalledChains = [];
+  activeTasks.forEach((t) => {
+    const info = getChainInfo(t);
+    if (info && info.isStalled && !seenRoots.has(info.root.id)) {
+      seenRoots.add(info.root.id);
+      stalledChains.push({ title: info.newest.title, steps: info.steps, ageDays: info.ageDays });
+    }
+  });
+
+  const nextUpcoming = sortTasks(activeTasks.filter((t) => t.due && t.due > today))[0];
+
+  const journal = loadJournal();
+  const recentMoods = Object.keys(journal)
+    .sort()
+    .reverse()
+    .slice(0, 3)
+    .map((date) => ({ date, label: journal[date].mood?.label, score: journal[date].mood?.score }))
+    .filter((m) => m.label);
+
+  return {
+    dueTodayCount: dueTodayTasks.length,
+    dueTodayTitles: dueTodayTasks.slice(0, 3).map((t) => t.title),
+    overdueCount,
+    openCount: activeTasks.length,
+    waitingStale: waitingStale.slice(0, 3),
+    stalledChains: stalledChains.slice(0, 3),
+    nextUpcoming: nextUpcoming ? { title: nextUpcoming.title, due: nextUpcoming.due } : null,
+    recentMoods,
+  };
+}
+
+async function generateBrief() {
+  try {
+    const res = await fetch("/api/journal/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "brief", stats: buildBriefStats() }),
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    if (!data.brief) throw new Error("no brief in response");
+    const cache = { date: todayISO(), brief: data.brief };
+    saveBriefCache(cache);
+    renderBrief(cache.brief);
+  } catch (err) {
+    console.error("Morning brief generation failed", err);
+    heroBriefEl.hidden = true;
+  }
+}
+
+async function initBrief() {
+  const today = todayISO();
+  const localCache = loadBriefCache();
+  if (localCache && localCache.date === today && localCache.brief) {
+    renderBrief(localCache.brief);
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/sync/brief");
+    if (res.ok) {
+      const { value } = await res.json();
+      if (value && value.date === today && value.brief) {
+        localStorage.setItem(HERO_BRIEF_KEY, JSON.stringify(value));
+        renderBrief(value.brief);
+        return;
+      }
+    }
+  } catch (err) {
+    /* fall through to generate locally */
+  }
+
+  heroBriefEl.hidden = true;
+  generateBrief();
+}
+
 const IDEAS_KEY = "lifeDashboard.ideas.v1";
 const IDEA_CATEGORY_LABELS = { "life-hack": "Life Hack", "business-idea": "Business Idea", other: "Other" };
 
@@ -2259,4 +2367,6 @@ cmdkInput.addEventListener("keydown", (e) => {
   }
 });
 
-hydrateFromServer();
+hydrateFromServer().then(() => {
+  initBrief();
+});

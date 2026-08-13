@@ -1,6 +1,6 @@
 import { kvGet, kvSet } from "../_lib/store.js";
 
-const ALLOWED_KEYS = ["tasks", "journal", "ideas", "stocks"];
+const ALLOWED_KEYS = ["tasks", "journal", "ideas", "stocks", "brief"];
 
 export default async function handler(req, res) {
   const { key } = req.query;
