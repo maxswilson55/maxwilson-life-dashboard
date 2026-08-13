@@ -900,6 +900,18 @@ body { padding-bottom: 3rem; }
   margin: 0 0 0.6rem 0.15rem;
 }
 
+.column {
+  border-radius: 10px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, padding 0.15s ease, margin 0.15s ease;
+}
+
+.column.is-drag-over {
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--border-active);
+  padding: 0.5rem;
+  margin: -0.5rem;
+}
+
 .task-list {
   list-style: none;
   margin: 0;
@@ -929,6 +941,32 @@ body { padding-bottom: 3rem; }
 }
 
 .task.is-completing { border-left-color: var(--personal-text); }
+
+.task.is-drag-source { opacity: 0.35; }
+
+.task-drag-handle {
+  flex: 0 0 auto;
+  cursor: grab;
+  color: var(--muted-2);
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.15rem 0.1rem;
+  touch-action: none;
+  user-select: none;
+  align-self: center;
+}
+
+.task-drag-handle:hover { color: var(--muted); }
+
+.task-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.92;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  cursor: grabbing;
+  margin: 0;
+}
 
 .check-burst {
   position: absolute;

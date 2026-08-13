@@ -68,7 +68,7 @@ const QUOTES = [
   { text: "The most difficult thing is the decision to act, the rest is merely tenacity.", author: "Amelia Earhart" },
 ];
 
-/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null, waitingOn:string|null, waitingSince:number|null}} Task */
+/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null, waitingOn:string|null, waitingSince:number|null, manualOrder:number|null}} Task */
 
 function loadTasks() {
   try {
@@ -303,6 +303,7 @@ function addTask({ title, category, priority, due, notes, followUpOf }) {
     followUpOf: followUpOf || null,
     waitingOn: null,
     waitingSince: null,
+    manualOrder: null,
   });
   saveTasks(tasks);
   render();
@@ -462,6 +463,15 @@ function inScope(task) {
 }
 
 function sortTasks(list) {
+  const hasManualOrder = list.some((t) => t.manualOrder != null);
+  if (hasManualOrder) {
+    return list.slice().sort((a, b) => {
+      const ao = a.manualOrder ?? Infinity;
+      const bo = b.manualOrder ?? Infinity;
+      if (ao !== bo) return ao - bo;
+      return a.createdAt - b.createdAt;
+    });
+  }
   return list.slice().sort((a, b) => {
     const pd = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
     if (pd !== 0) return pd;
@@ -486,11 +496,18 @@ function formatDue(due) {
 
 const template = document.getElementById("task-item-template");
 
-function renderTaskItem(task) {
+function renderTaskItem(task, draggable) {
   const node = template.content.firstElementChild.cloneNode(true);
   node.dataset.id = task.id;
   node.classList.toggle("is-done", task.done);
   node.dataset.priority = task.priority;
+
+  const dragHandle = node.querySelector(".task-drag-handle");
+  if (draggable) {
+    attachDragHandle(dragHandle, task, node);
+  } else {
+    dragHandle.remove();
+  }
 
   const checkbox = node.querySelector('input[type="checkbox"]');
   checkbox.checked = task.done;
@@ -597,11 +614,11 @@ function renderTaskItem(task) {
 const COLLAPSE_AT = 6;
 const expandedSections = new Set();
 
-function renderList(listEl, hintEl, list, sectionKey) {
+function renderList(listEl, hintEl, list, sectionKey, draggable) {
   listEl.innerHTML = "";
   const isExpanded = !sectionKey || expandedSections.has(sectionKey);
   const visibleList = isExpanded ? list : list.slice(0, COLLAPSE_AT);
-  visibleList.forEach((t) => listEl.appendChild(renderTaskItem(t)));
+  visibleList.forEach((t) => listEl.appendChild(renderTaskItem(t, draggable)));
   if (hintEl) hintEl.hidden = list.length > 0;
 
   const existingToggle = listEl.parentElement.querySelector(`.section-toggle[data-section="${sectionKey}"]`);
@@ -648,8 +665,8 @@ function render() {
   const rankedBacklog = someday.slice().sort((a, b) => backlogScore(b) - backlogScore(a));
 
   renderTodayColumn(todayAndOverdue, rankedBacklog);
-  renderList(document.getElementById("list-upcoming"), document.getElementById("hint-upcoming"), upcoming, "upcoming");
-  renderList(document.getElementById("list-someday"), document.getElementById("hint-someday"), someday, "someday");
+  renderList(document.getElementById("list-upcoming"), document.getElementById("hint-upcoming"), upcoming, "upcoming", true);
+  renderList(document.getElementById("list-someday"), document.getElementById("hint-someday"), someday, "someday", true);
   renderList(document.getElementById("list-completed"), null, completed);
 
   document.getElementById("completed-count").textContent = completed.length;
@@ -689,7 +706,7 @@ function renderTodayColumn(todayAndOverdue, rankedBacklog) {
 
   if (todayAndOverdue.length > 0) {
     fallbackNoteEl.hidden = true;
-    renderList(listEl, hintEl, todayAndOverdue, "today");
+    renderList(listEl, hintEl, todayAndOverdue, "today", true);
     return;
   }
 
@@ -697,7 +714,7 @@ function renderTodayColumn(todayAndOverdue, rankedBacklog) {
 
   if (suggestions.length === 0) {
     fallbackNoteEl.hidden = true;
-    renderList(listEl, hintEl, [], "today");
+    renderList(listEl, hintEl, [], "today", true);
     return;
   }
 
@@ -707,6 +724,158 @@ function renderTodayColumn(todayAndOverdue, rankedBacklog) {
   suggestions.forEach((t) => listEl.appendChild(renderTaskItem(t)));
   const existingToggle = listEl.parentElement.querySelector('.section-toggle[data-section="today"]');
   if (existingToggle) existingToggle.remove();
+}
+
+const DRAG_COLUMNS = [
+  { key: "today", listId: "list-today", columnId: "col-today" },
+  { key: "upcoming", listId: "list-upcoming", columnId: "col-upcoming" },
+  { key: "someday", listId: "list-someday", columnId: "col-someday" },
+];
+
+function findDropColumn(x, y) {
+  for (const col of DRAG_COLUMNS) {
+    const columnEl = document.getElementById(col.columnId);
+    const rect = columnEl.getBoundingClientRect();
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+      return col;
+    }
+  }
+  return null;
+}
+
+function computeInsertIndex(listEl, y, excludeId) {
+  const rows = [...listEl.querySelectorAll(".task")].filter((r) => r.dataset.id !== excludeId);
+  for (let i = 0; i < rows.length; i++) {
+    const rect = rows[i].getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    if (y < mid) return i;
+  }
+  return rows.length;
+}
+
+let autoScrollInterval = null;
+
+function updateAutoScroll(clientY) {
+  const threshold = 70;
+  const speed = 14;
+  if (clientY < threshold) {
+    startAutoScroll(-speed);
+  } else if (clientY > window.innerHeight - threshold) {
+    startAutoScroll(speed);
+  } else {
+    stopAutoScroll();
+  }
+}
+
+function startAutoScroll(delta) {
+  if (autoScrollInterval) return;
+  autoScrollInterval = setInterval(() => window.scrollBy(0, delta), 16);
+}
+
+function stopAutoScroll() {
+  clearInterval(autoScrollInterval);
+  autoScrollInterval = null;
+}
+
+function positionGhost(ghost, clientX, clientY, offsetX, offsetY) {
+  ghost.style.left = `${clientX - offsetX}px`;
+  ghost.style.top = `${clientY - offsetY}px`;
+}
+
+function finalizeDrop(taskId, targetCol, insertIndex) {
+  const task = tasks.find((t) => t.id === taskId);
+  if (!task) return;
+
+  const today = todayISO();
+  if (targetCol.key === "today") {
+    task.due = today;
+  } else if (targetCol.key === "upcoming") {
+    if (!task.due || task.due <= today) task.due = offsetISO(1);
+  } else if (targetCol.key === "someday") {
+    task.due = null;
+  }
+
+  const visible = tasks.filter(inScope);
+  const activeNow = visible.filter((t) => !t.done);
+  let bucket;
+  if (targetCol.key === "today") bucket = activeNow.filter((t) => t.due && t.due <= today);
+  else if (targetCol.key === "upcoming") bucket = activeNow.filter((t) => t.due && t.due > today);
+  else bucket = activeNow.filter((t) => !t.due);
+
+  const others = sortTasks(bucket.filter((t) => t.id !== taskId));
+  const clampedIndex = Math.max(0, Math.min(insertIndex, others.length));
+  others.splice(clampedIndex, 0, task);
+  others.forEach((t, i) => {
+    t.manualOrder = i;
+  });
+
+  saveTasks(tasks);
+  render();
+}
+
+function attachDragHandle(handle, task, rowEl) {
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    e.preventDefault();
+
+    const rect = rowEl.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+
+    const ghost = rowEl.cloneNode(true);
+    ghost.classList.add("task-drag-ghost");
+    ghost.style.width = `${rect.width}px`;
+    document.body.appendChild(ghost);
+    positionGhost(ghost, e.clientX, e.clientY, offsetX, offsetY);
+
+    rowEl.classList.add("is-drag-source");
+    let activeColumnEl = null;
+
+    const onMove = (ev) => {
+      positionGhost(ghost, ev.clientX, ev.clientY, offsetX, offsetY);
+      updateAutoScroll(ev.clientY);
+      const col = findDropColumn(ev.clientX, ev.clientY);
+      if (activeColumnEl) activeColumnEl.classList.remove("is-drag-over");
+      activeColumnEl = col ? document.getElementById(col.columnId) : null;
+      if (activeColumnEl) activeColumnEl.classList.add("is-drag-over");
+    };
+
+    const cleanup = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onCancel);
+      try {
+        handle.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        /* capture was never established, or already released */
+      }
+      stopAutoScroll();
+      ghost.remove();
+      rowEl.classList.remove("is-drag-source");
+      if (activeColumnEl) activeColumnEl.classList.remove("is-drag-over");
+    };
+
+    const onUp = (ev) => {
+      const col = findDropColumn(ev.clientX, ev.clientY);
+      cleanup();
+      if (col) {
+        const listEl = document.getElementById(col.listId);
+        const insertIndex = computeInsertIndex(listEl, ev.clientY, task.id);
+        finalizeDrop(task.id, col, insertIndex);
+      }
+    };
+
+    const onCancel = () => cleanup();
+
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch (err) {
+      /* pointer capture unsupported/unavailable — document-level listeners below still work */
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onCancel);
+  });
 }
 
 function getGreeting() {
