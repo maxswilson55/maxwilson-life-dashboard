@@ -112,6 +112,14 @@
       </div>
     </section>
 
+    <section class="gmail-section" id="waiting-section">
+      <div class="gmail-header">
+        <h2>⏳ Waiting On</h2>
+      </div>
+      <p class="empty-hint" id="waiting-hint">Nothing you're waiting on right now.</p>
+      <ul class="task-list" id="waiting-list"></ul>
+    </section>
+
     <section class="connectors-bar" id="connectors-bar" hidden>
       <span class="connectors-label">Connect:</span>
       <button type="button" id="calendar-connect-mini" class="connector-mini-btn" hidden>📅 Calendar</button>
@@ -248,10 +256,12 @@
         </div>
         <div class="task-meta">
           <span class="task-due"></span>
+          <span class="task-waiting-badge"></span>
           <span class="task-followup-of"></span>
           <span class="task-notes"></span>
         </div>
       </div>
+      <button class="task-waiting-btn" title="Mark as waiting on someone" aria-label="Mark as waiting on someone">⏳</button>
       <button class="task-followup" title="Add follow-up task" aria-label="Add follow-up task">🔗</button>
       <button class="task-edit" title="Edit" aria-label="Edit task">✏️</button>
       <button class="task-delete" title="Delete" aria-label="Delete task">×</button>

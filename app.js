@@ -68,7 +68,7 @@ const QUOTES = [
   { text: "The most difficult thing is the decision to act, the rest is merely tenacity.", author: "Amelia Earhart" },
 ];
 
-/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null}} Task */
+/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null, waitingOn:string|null, waitingSince:number|null}} Task */
 
 function loadTasks() {
   try {
@@ -112,11 +112,19 @@ function isSameMonth(timestamp) {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
 }
 
+const WAITING_ESCALATE_DAYS = 7;
+
+function waitingDays(task) {
+  if (!task.waitingOn || !task.waitingSince) return 0;
+  return (Date.now() - task.waitingSince) / 86400000;
+}
+
 function backlogScore(task) {
   const ageDays = (Date.now() - task.createdAt) / 86400000;
   const priorityWeight = { high: 3, medium: 2, low: 1 }[task.priority] || 1;
   const followUpBoost = task.followUpOf ? 1.3 : 1;
-  return ageDays * priorityWeight * followUpBoost;
+  const waitingEscalation = waitingDays(task) >= WAITING_ESCALATE_DAYS ? 3 : 1;
+  return ageDays * priorityWeight * followUpBoost * waitingEscalation;
 }
 
 const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -255,6 +263,8 @@ function addTask({ title, category, priority, due, notes, followUpOf }) {
     createdAt: Date.now(),
     completedAt: null,
     followUpOf: followUpOf || null,
+    waitingOn: null,
+    waitingSince: null,
   });
   saveTasks(tasks);
   render();
@@ -265,6 +275,20 @@ function toggleDone(id) {
   if (!t) return;
   t.done = !t.done;
   t.completedAt = t.done ? Date.now() : null;
+  saveTasks(tasks);
+  render();
+}
+
+function setWaitingOn(id, waitingOnValue) {
+  const t = tasks.find((x) => x.id === id);
+  if (!t) return;
+  if (waitingOnValue) {
+    if (!t.waitingOn) t.waitingSince = Date.now();
+    t.waitingOn = waitingOnValue;
+  } else {
+    t.waitingOn = null;
+    t.waitingSince = null;
+  }
   saveTasks(tasks);
   render();
 }
@@ -471,6 +495,29 @@ function renderTaskItem(task) {
     followUpEl.remove();
   }
 
+  const waitingBadge = node.querySelector(".task-waiting-badge");
+  if (task.waitingOn) {
+    const days = Math.floor(waitingDays(task));
+    waitingBadge.textContent = `⏳ Waiting on ${task.waitingOn} · ${days}d`;
+    waitingBadge.classList.toggle("is-stale", days >= WAITING_ESCALATE_DAYS);
+  } else {
+    waitingBadge.remove();
+  }
+
+  const waitingBtn = node.querySelector(".task-waiting-btn");
+  waitingBtn.title = task.waitingOn ? "Update or clear waiting status" : "Mark as waiting on someone";
+  waitingBtn.setAttribute("aria-label", waitingBtn.title);
+  waitingBtn.addEventListener("click", () => {
+    const input = window.prompt(
+      task.waitingOn
+        ? "Update who/what you're waiting on (leave blank to clear):"
+        : "Who or what are you waiting on?",
+      task.waitingOn || ""
+    );
+    if (input === null) return;
+    setWaitingOn(task.id, input.trim() || null);
+  });
+
   node.querySelector(".task-followup").addEventListener("click", () => startFollowUp(task));
   node.querySelector(".task-edit").addEventListener("click", () => enterEditMode(task));
 
@@ -547,9 +594,26 @@ function render() {
     toggleCompletedBtn.setAttribute("aria-expanded", "true");
   }
 
+  const waitingTasks = active
+    .filter((t) => t.waitingOn)
+    .sort((a, b) => (a.waitingSince || 0) - (b.waitingSince || 0));
+  renderWaitingSection(waitingTasks);
+
   renderStats(active, todayAndOverdue, completed);
   renderHero(todayAndOverdue, upcoming, rankedBacklog);
   renderHeatmap();
+}
+
+function renderWaitingSection(waitingTasks) {
+  const listEl = document.getElementById("waiting-list");
+  const hintEl = document.getElementById("waiting-hint");
+  listEl.innerHTML = "";
+  if (waitingTasks.length === 0) {
+    hintEl.hidden = false;
+    return;
+  }
+  hintEl.hidden = true;
+  waitingTasks.forEach((t) => listEl.appendChild(renderTaskItem(t)));
 }
 
 function renderTodayColumn(todayAndOverdue, rankedBacklog) {
