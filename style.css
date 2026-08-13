@@ -1170,4 +1170,128 @@ body { padding-bottom: 3rem; }
   margin-top: 0.6rem;
 }
 
+.cmdk-trigger-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cmdk-trigger-btn:hover {
+  border-color: var(--border-active);
+  color: var(--text);
+}
+
+.cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  z-index: 50;
+}
+
+.cmdk-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 60vh;
+  margin: 0 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cmdk-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+  padding: 0.9rem 1rem;
+}
+
+.cmdk-input:focus { outline: none; }
+.cmdk-input::placeholder { color: var(--muted-2); }
+
+.cmdk-results {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem;
+  overflow-y: auto;
+}
+
+.cmdk-result {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.cmdk-result.is-selected {
+  background: var(--accent-soft);
+}
+
+.cmdk-result-icon { flex: 0 0 auto; }
+
+.cmdk-result-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmdk-result-sublabel {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.cmdk-result-complete-btn {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.cmdk-result-complete-btn:hover {
+  border-color: var(--border-active);
+  color: var(--personal-text);
+}
+
+.cmdk-empty {
+  padding: 1rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@keyframes jump-flash {
+  0%, 100% { box-shadow: none; }
+  30% { box-shadow: 0 0 0 2px var(--accent-bright); }
+}
+
+.is-jumped { animation: jump-flash 1.4s ease; }
+
 [hidden] { display: none !important; }

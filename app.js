@@ -2019,4 +2019,244 @@ async function hydrateFromServer() {
   if (stocksChanged) loadStockQuotes();
 }
 
+const cmdkOverlay = document.getElementById("cmdk-overlay");
+const cmdkInput = document.getElementById("cmdk-input");
+const cmdkResultsEl = document.getElementById("cmdk-results");
+const cmdkTriggerBtn = document.getElementById("cmdk-trigger-btn");
+
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function scrollToBoard() {
+  scrollToSection("board");
+}
+
+const CMDK_STATIC_COMMANDS = [
+  {
+    icon: "🔎",
+    label: "Filter: Due today / overdue",
+    keywords: ["today", "due", "overdue"],
+    action: () => {
+      statFilter = "dueToday";
+      render();
+      scrollToBoard();
+    },
+  },
+  {
+    icon: "🔎",
+    label: "Filter: High priority",
+    keywords: ["high", "priority"],
+    action: () => {
+      statFilter = "high";
+      render();
+      scrollToBoard();
+    },
+  },
+  {
+    icon: "🔎",
+    label: "Filter: Done this month",
+    keywords: ["done", "completed", "month"],
+    action: () => {
+      statFilter = "doneMonth";
+      render();
+      scrollToBoard();
+    },
+  },
+  {
+    icon: "✕",
+    label: "Clear filter",
+    keywords: ["clear", "reset"],
+    action: () => {
+      statFilter = null;
+      render();
+    },
+  },
+  { icon: "📍", label: "Jump to Backlog", keywords: ["backlog"], action: () => scrollToSection("col-someday") },
+  { icon: "📍", label: "Jump to Waiting On", keywords: ["waiting"], action: () => scrollToSection("waiting-section") },
+  {
+    icon: "📍",
+    label: "Jump to Daily Check-in",
+    keywords: ["journal", "checkin", "mood"],
+    action: () => scrollToSection("journal-section"),
+  },
+  { icon: "📍", label: "Jump to Saved Ideas", keywords: ["ideas"], action: () => scrollToSection("ideas-section") },
+  { icon: "📍", label: "Jump to Portfolio", keywords: ["portfolio", "stocks"], action: () => scrollToSection("stocks-section") },
+  { icon: "📍", label: "Jump to Business News", keywords: ["news"], action: () => scrollToSection("news-section") },
+  { icon: "📍", label: "Jump to top", keywords: ["top"], action: () => window.scrollTo({ top: 0, behavior: "smooth" }) },
+];
+
+let cmdkSelectedIndex = 0;
+
+function jumpToTask(taskId) {
+  closePalette();
+  const row = document.querySelector(`.task[data-id="${taskId}"]`);
+  if (!row) return;
+  row.scrollIntoView({ behavior: "smooth", block: "center" });
+  row.classList.remove("is-jumped");
+  void row.offsetWidth;
+  row.classList.add("is-jumped");
+  setTimeout(() => row.classList.remove("is-jumped"), 1500);
+}
+
+function buildCmdkResults(query) {
+  const q = query.trim().toLowerCase();
+  const results = [];
+
+  if (query.trim()) {
+    const parsed = parseQuickAdd(query.trim());
+    const bits = [];
+    if (parsed.due) bits.push(formatDue(parsed.due) || parsed.due);
+    if (parsed.priority) bits.push(parsed.priority);
+    if (parsed.category) bits.push(parsed.category);
+    results.push({
+      type: "add",
+      icon: "➕",
+      label: `Add "${parsed.cleanTitle || query.trim()}"`,
+      sublabel: bits.join(" · "),
+      action: () => {
+        addTask({
+          title: parsed.cleanTitle || query.trim(),
+          category: parsed.category || "work",
+          priority: parsed.priority || "medium",
+          due: parsed.due || "",
+          notes: "",
+        });
+        closePalette();
+      },
+    });
+  }
+
+  const matchedTasks = tasks
+    .filter((t) => !t.done && (q === "" || t.title.toLowerCase().includes(q)))
+    .slice(0, 6);
+  matchedTasks.forEach((t) => {
+    results.push({
+      type: "task",
+      icon: PRIORITY_EMOJI[t.priority] || "•",
+      label: t.title,
+      sublabel: t.due ? formatDue(t.due) : "",
+      action: () => jumpToTask(t.id),
+      onComplete: () => {
+        toggleDone(t.id);
+        closePalette();
+      },
+    });
+  });
+
+  CMDK_STATIC_COMMANDS.filter(
+    (c) => q === "" || c.label.toLowerCase().includes(q) || c.keywords.some((k) => k.includes(q) || q.includes(k))
+  ).forEach((c) => {
+    results.push({ type: "command", icon: c.icon, label: c.label, sublabel: "", action: () => { c.action(); closePalette(); } });
+  });
+
+  return results;
+}
+
+function renderCmdkResults() {
+  const results = buildCmdkResults(cmdkInput.value);
+  cmdkResultsEl.innerHTML = "";
+  cmdkResultsEl.dataset.count = results.length;
+
+  if (results.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "cmdk-empty";
+    empty.textContent = "Nothing matches.";
+    cmdkResultsEl.appendChild(empty);
+    return;
+  }
+
+  cmdkSelectedIndex = Math.min(cmdkSelectedIndex, results.length - 1);
+
+  results.forEach((r, i) => {
+    const li = document.createElement("li");
+    li.className = "cmdk-result";
+    li.classList.toggle("is-selected", i === cmdkSelectedIndex);
+
+    const icon = document.createElement("span");
+    icon.className = "cmdk-result-icon";
+    icon.textContent = r.icon;
+    li.appendChild(icon);
+
+    const label = document.createElement("span");
+    label.className = "cmdk-result-label";
+    label.textContent = r.label;
+    li.appendChild(label);
+
+    if (r.sublabel) {
+      const sub = document.createElement("span");
+      sub.className = "cmdk-result-sublabel";
+      sub.textContent = r.sublabel;
+      li.appendChild(sub);
+    }
+
+    if (r.onComplete) {
+      const completeBtn = document.createElement("button");
+      completeBtn.type = "button";
+      completeBtn.className = "cmdk-result-complete-btn";
+      completeBtn.textContent = "✓ Done";
+      completeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        r.onComplete();
+      });
+      li.appendChild(completeBtn);
+    }
+
+    li.addEventListener("click", () => r.action());
+    cmdkResultsEl.appendChild(li);
+  });
+}
+
+function openPalette() {
+  cmdkOverlay.hidden = false;
+  cmdkInput.value = "";
+  cmdkSelectedIndex = 0;
+  renderCmdkResults();
+  cmdkInput.focus();
+}
+
+function closePalette() {
+  cmdkOverlay.hidden = true;
+}
+
+cmdkTriggerBtn.addEventListener("click", openPalette);
+
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    if (cmdkOverlay.hidden) openPalette();
+    else closePalette();
+  } else if (e.key === "Escape" && !cmdkOverlay.hidden) {
+    closePalette();
+  }
+});
+
+cmdkOverlay.addEventListener("click", (e) => {
+  if (e.target === cmdkOverlay) closePalette();
+});
+
+cmdkInput.addEventListener("input", () => {
+  cmdkSelectedIndex = 0;
+  renderCmdkResults();
+});
+
+cmdkInput.addEventListener("keydown", (e) => {
+  const count = Number(cmdkResultsEl.dataset.count || 0);
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (count > 0) cmdkSelectedIndex = (cmdkSelectedIndex + 1) % count;
+    renderCmdkResults();
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    if (count > 0) cmdkSelectedIndex = (cmdkSelectedIndex - 1 + count) % count;
+    renderCmdkResults();
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    const results = buildCmdkResults(cmdkInput.value);
+    const chosen = results[cmdkSelectedIndex];
+    if (chosen) chosen.action();
+  }
+});
+
 hydrateFromServer();

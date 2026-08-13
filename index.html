@@ -22,6 +22,7 @@
         <button class="scope-tab" data-scope="work" role="tab" aria-selected="false">💼 Work</button>
         <button class="scope-tab" data-scope="personal" role="tab" aria-selected="false">🏡 Personal</button>
       </div>
+      <button type="button" id="cmdk-trigger-btn" class="cmdk-trigger-btn" title="Command palette (Ctrl/Cmd+K)" aria-label="Open command palette">⌘K</button>
     </div>
     <div class="stats-strip" id="stats-strip"></div>
   </header>
@@ -240,6 +241,13 @@
     <span id="toast-message"></span>
     <button type="button" id="toast-action-btn" hidden></button>
     <button type="button" id="toast-undo-btn">Undo</button>
+  </div>
+
+  <div class="cmdk-overlay" id="cmdk-overlay" hidden>
+    <div class="cmdk-modal" role="dialog" aria-modal="true" aria-label="Command palette">
+      <input type="text" id="cmdk-input" class="cmdk-input" placeholder="Type to add, find, filter, or jump…" autocomplete="off" />
+      <ul class="cmdk-results" id="cmdk-results"></ul>
+    </div>
   </div>
 
   <template id="task-item-template">
