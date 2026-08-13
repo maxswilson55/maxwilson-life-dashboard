@@ -78,6 +78,13 @@
               <option value="medium" selected>🟡 Medium</option>
               <option value="low">🔵 Low</option>
             </select>
+            <input type="number" id="task-estimate" aria-label="Estimated minutes" placeholder="Est. mins" min="0" step="5" class="task-estimate-input" />
+            <select id="task-recurrence" aria-label="Repeat">
+              <option value="">Repeat: Never</option>
+              <option value="daily">Repeat: Daily</option>
+              <option value="weekly">Repeat: Weekly</option>
+              <option value="monthly">Repeat: Monthly</option>
+            </select>
           </div>
           <div class="date-row">
             <div class="date-chips" id="date-chips">
@@ -189,6 +196,7 @@
 
     <section class="completed-section">
       <button id="toggle-completed" class="link-btn" aria-expanded="false">Show completed (<span id="completed-count">0</span>)</button>
+      <button id="weekly-review-btn" class="link-btn" type="button">📅 Weekly review</button>
       <ul class="task-list" id="list-completed" hidden></ul>
     </section>
 
@@ -253,6 +261,16 @@
     </div>
   </div>
 
+  <div class="cmdk-overlay" id="weekly-review-overlay" hidden>
+    <div class="cmdk-modal weekly-review-modal" role="dialog" aria-modal="true" aria-label="Weekly review">
+      <div class="weekly-review-header">
+        <h2>📅 Weekly Review</h2>
+        <button type="button" id="weekly-review-close-btn" class="link-btn" aria-label="Close weekly review">✕</button>
+      </div>
+      <div class="weekly-review-body" id="weekly-review-body"></div>
+    </div>
+  </div>
+
   <template id="task-item-template">
     <li class="task" data-id="">
       <span class="task-drag-handle" title="Drag to move" aria-label="Drag to move" role="button">⠿</span>
@@ -268,6 +286,8 @@
         </div>
         <div class="task-meta">
           <span class="task-due"></span>
+          <span class="task-estimate-badge"></span>
+          <span class="task-recurrence-badge"></span>
           <span class="task-waiting-badge"></span>
           <button type="button" class="task-chain-badge"></button>
           <span class="task-followup-of"></span>

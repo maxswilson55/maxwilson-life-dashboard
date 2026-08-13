@@ -116,6 +116,16 @@ body { padding-bottom: 3rem; }
   color: var(--accent-bright);
 }
 
+.stat-pill.is-static {
+  cursor: default;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-pill.is-static:hover {
+  border-color: var(--border);
+  color: var(--muted);
+}
+
 .stat-clear-btn {
   font-size: 0.75rem;
 }
@@ -580,6 +590,11 @@ body { padding-bottom: 3rem; }
 
 .quick-add-row select {
   flex: 1 1 110px;
+  min-width: 0;
+}
+
+.task-estimate-input {
+  flex: 1 1 90px;
   min-width: 0;
 }
 
@@ -1138,6 +1153,18 @@ body { padding-bottom: 3rem; }
   border-radius: 5px;
 }
 
+.task-estimate-badge,
+.task-recurrence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-2);
+  padding: 0.1rem 0.4rem;
+  border-radius: 5px;
+}
+
 .task-waiting-badge.is-stale {
   color: var(--high);
   background: var(--high-bg);
@@ -1375,5 +1402,73 @@ body { padding-bottom: 3rem; }
 }
 
 .is-jumped { animation: jump-flash 1.4s ease; }
+
+.weekly-review-modal {
+  max-width: 640px;
+  max-height: 78vh;
+}
+
+.weekly-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.weekly-review-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.weekly-review-body {
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.weekly-review-stats {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+
+.weekly-review-section {
+  margin-bottom: 1.3rem;
+}
+
+.weekly-review-section h3 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 0.6rem 0.15rem;
+}
+
+.weekly-review-day-group {
+  margin-bottom: 0.7rem;
+}
+
+.weekly-review-day-label {
+  font-size: 0.76rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.weekly-review-item {
+  font-size: 0.85rem;
+  color: var(--text);
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.weekly-review-item:last-child { border-bottom: none; }
+
+.weekly-review-item-sub {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
 
 [hidden] { display: none !important; }

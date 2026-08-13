@@ -68,7 +68,7 @@ const QUOTES = [
   { text: "The most difficult thing is the decision to act, the rest is merely tenacity.", author: "Amelia Earhart" },
 ];
 
-/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null, waitingOn:string|null, waitingSince:number|null, manualOrder:number|null}} Task */
+/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null, waitingOn:string|null, waitingSince:number|null, manualOrder:number|null, estimateMinutes:number|null, recurrence:'daily'|'weekly'|'monthly'|null}} Task */
 
 function loadTasks() {
   try {
@@ -293,7 +293,7 @@ function cleanPastedText(text) {
   return text.replace(/[ﬀ-ﬆ]/g, (ch) => LIGATURE_MAP[ch] || ch);
 }
 
-function addTask({ title, category, priority, due, notes, followUpOf }) {
+function addTask({ title, category, priority, due, notes, followUpOf, estimateMinutes, recurrence }) {
   tasks.push({
     id: makeId(),
     title: cleanPastedText(title.trim()),
@@ -308,16 +308,52 @@ function addTask({ title, category, priority, due, notes, followUpOf }) {
     waitingOn: null,
     waitingSince: null,
     manualOrder: null,
+    estimateMinutes: estimateMinutes || null,
+    recurrence: recurrence || null,
   });
   saveTasks(tasks);
   render();
 }
 
+function nextRecurrenceDue(task) {
+  const base = task.due ? new Date(task.due + "T00:00:00") : new Date();
+  base.setHours(0, 0, 0, 0);
+  if (task.recurrence === "daily") base.setDate(base.getDate() + 1);
+  else if (task.recurrence === "weekly") base.setDate(base.getDate() + 7);
+  else if (task.recurrence === "monthly") base.setMonth(base.getMonth() + 1);
+  return toISO(base);
+}
+
+function spawnNextRecurrence(task) {
+  if (!task.recurrence) return null;
+  const next = {
+    id: makeId(),
+    title: task.title,
+    category: task.category,
+    priority: task.priority,
+    due: nextRecurrenceDue(task),
+    notes: task.notes,
+    done: false,
+    createdAt: Date.now(),
+    completedAt: null,
+    followUpOf: null,
+    waitingOn: null,
+    waitingSince: null,
+    manualOrder: null,
+    estimateMinutes: task.estimateMinutes,
+    recurrence: task.recurrence,
+  };
+  tasks.push(next);
+  return next.id;
+}
+
 function toggleDone(id) {
   const t = tasks.find((x) => x.id === id);
   if (!t) return;
+  const wasDone = t.done;
   t.done = !t.done;
   t.completedAt = t.done ? Date.now() : null;
+  if (!wasDone && t.done) spawnNextRecurrence(t);
   saveTasks(tasks);
   render();
 }
@@ -355,6 +391,7 @@ function handleTaskCheckboxChange(task, node) {
 
   task.done = true;
   task.completedAt = Date.now();
+  const spawnedId = spawnNextRecurrence(task);
   saveTasks(tasks);
   playCompletionAnimation(node);
 
@@ -365,6 +402,7 @@ function handleTaskCheckboxChange(task, node) {
       () => {
         task.done = false;
         task.completedAt = null;
+        if (spawnedId) tasks = tasks.filter((t) => t.id !== spawnedId);
         saveTasks(tasks);
         render();
       },
@@ -373,7 +411,7 @@ function handleTaskCheckboxChange(task, node) {
   }, 650);
 }
 
-function updateTask(id, { title, category, priority, due, notes }) {
+function updateTask(id, { title, category, priority, due, notes, estimateMinutes, recurrence }) {
   const t = tasks.find((x) => x.id === id);
   if (!t) return;
   t.title = cleanPastedText(title.trim());
@@ -381,6 +419,8 @@ function updateTask(id, { title, category, priority, due, notes }) {
   t.priority = priority;
   t.due = due || null;
   t.notes = cleanPastedText(notes.trim());
+  t.estimateMinutes = estimateMinutes || null;
+  t.recurrence = recurrence || null;
   saveTasks(tasks);
   render();
 }
@@ -444,6 +484,55 @@ toastActionBtn.addEventListener("click", () => {
 
 let syncFailureToastAt = 0;
 
+const SYNC_QUEUE_KEY = "lifeDashboard.syncQueue.v1";
+
+function loadSyncQueue() {
+  try {
+    return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "{}");
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveSyncQueue(queue) {
+  localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+}
+
+function queueFailedSync(key, value) {
+  const queue = loadSyncQueue();
+  queue[key] = value;
+  saveSyncQueue(queue);
+}
+
+function clearQueuedSync(key) {
+  const queue = loadSyncQueue();
+  if (key in queue) {
+    delete queue[key];
+    saveSyncQueue(queue);
+  }
+}
+
+async function flushSyncQueue() {
+  const queue = loadSyncQueue();
+  const keys = Object.keys(queue);
+  if (keys.length === 0) return;
+  for (const key of keys) {
+    try {
+      const res = await fetch(`/api/sync/${key}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(queue[key]),
+      });
+      if (res.ok) clearQueuedSync(key);
+    } catch (err) {
+      /* still offline — leave queued, try again next flush */
+    }
+  }
+}
+
+window.addEventListener("online", flushSyncQueue);
+setInterval(flushSyncQueue, 30000);
+
 async function syncToServer(key, value) {
   try {
     const res = await fetch(`/api/sync/${key}`, {
@@ -452,8 +541,10 @@ async function syncToServer(key, value) {
       body: JSON.stringify(value),
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
+    clearQueuedSync(key);
   } catch (err) {
     console.error(`Sync to server failed for "${key}"`, err);
+    queueFailedSync(key, value);
     const now = Date.now();
     if (now - syncFailureToastAt > 4000) {
       syncFailureToastAt = now;
@@ -565,6 +656,21 @@ function renderTaskItem(task, draggable) {
     followUpEl.textContent = `↳ Follow-up to "${parentTask.title}"`;
   } else {
     followUpEl.remove();
+  }
+
+  const estimateBadge = node.querySelector(".task-estimate-badge");
+  if (task.estimateMinutes) {
+    estimateBadge.textContent = `⏱ ${formatMinutes(task.estimateMinutes)}`;
+  } else {
+    estimateBadge.remove();
+  }
+
+  const recurrenceBadge = node.querySelector(".task-recurrence-badge");
+  if (task.recurrence) {
+    const labels = { daily: "Daily", weekly: "Weekly", monthly: "Monthly" };
+    recurrenceBadge.textContent = `🔁 ${labels[task.recurrence]}`;
+  } else {
+    recurrenceBadge.remove();
   }
 
   const waitingBadge = node.querySelector(".task-waiting-badge");
@@ -904,6 +1010,27 @@ function getGreeting() {
   return { text: "Good evening, Max", emoji: "🌙" };
 }
 
+function getTimeMode() {
+  const hour = new Date().getHours();
+  if (hour < 11) return "morning";
+  if (hour < 18) return "day";
+  return "evening";
+}
+
+function applyTimeMode() {
+  if (getTimeMode() !== "evening") return;
+  const heroCard = document.querySelector(".hero-card");
+  const journalSection = document.getElementById("journal-section");
+  if (heroCard && journalSection) {
+    heroCard.after(journalSection);
+    // Overrides the mobile stylesheet's `order` rule for this section (inline style
+    // always wins over an external rule), so the rise-to-top also applies on mobile.
+    // Same order value as .hero-card (1) is fine: flexbox falls back to DOM source
+    // order as a tiebreak, and journalSection was just moved to sit right after it.
+    journalSection.style.order = "1";
+  }
+}
+
 function renderHeroTaskRow(task) {
   const wrap = document.createElement("div");
   wrap.className = "hero-next-task";
@@ -1006,6 +1133,14 @@ function renderHeatmap() {
   }
 }
 
+function formatMinutes(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 function renderStats(active, todayAndOverdue, completed) {
   const highCount = active.filter((t) => t.priority === "high").length;
   const doneThisMonthCount = completed.filter((t) => t.completedAt && isSameMonth(t.completedAt)).length;
@@ -1029,6 +1164,14 @@ function renderStats(active, todayAndOverdue, completed) {
     });
     strip.appendChild(pill);
   });
+
+  const todayEstimateTotal = todayAndOverdue.reduce((sum, t) => sum + (t.estimateMinutes || 0), 0);
+  if (todayEstimateTotal > 0) {
+    const estimatePill = document.createElement("span");
+    estimatePill.className = "stat-pill is-static";
+    estimatePill.textContent = `⏱ ${formatMinutes(todayEstimateTotal)} today`;
+    strip.appendChild(estimatePill);
+  }
 
   if (statFilter) {
     const clearBtn = document.createElement("button");
@@ -1097,6 +1240,8 @@ function enterEditMode(task) {
   document.getElementById("task-category").value = task.category;
   document.getElementById("task-priority").value = task.priority;
   document.getElementById("task-notes").value = task.notes || "";
+  document.getElementById("task-estimate").value = task.estimateMinutes || "";
+  document.getElementById("task-recurrence").value = task.recurrence || "";
   dueInput.value = task.due || "";
   updateDateUI();
   setAdvancedOpen(true);
@@ -1138,12 +1283,15 @@ document.getElementById("task-form").addEventListener("submit", (e) => {
   const rawTitle = document.getElementById("task-title").value;
   if (!rawTitle.trim()) return;
   const parsed = parseQuickAdd(rawTitle);
+  const estimateRaw = document.getElementById("task-estimate").value;
   const payload = {
     title: parsed.cleanTitle || rawTitle,
     category: parsed.category || document.getElementById("task-category").value,
     priority: parsed.priority || document.getElementById("task-priority").value,
     due: parsed.due || document.getElementById("task-due").value,
     notes: document.getElementById("task-notes").value,
+    estimateMinutes: estimateRaw ? Number(estimateRaw) : null,
+    recurrence: document.getElementById("task-recurrence").value || null,
   };
   if (editingTaskId) {
     updateTask(editingTaskId, payload);
@@ -2379,6 +2527,7 @@ const CMDK_STATIC_COMMANDS = [
   { icon: "📍", label: "Jump to Portfolio", keywords: ["portfolio", "stocks"], action: () => scrollToSection("stocks-section") },
   { icon: "📍", label: "Jump to Business News", keywords: ["news"], action: () => scrollToSection("news-section") },
   { icon: "📍", label: "Jump to top", keywords: ["top"], action: () => window.scrollTo({ top: 0, behavior: "smooth" }) },
+  { icon: "📅", label: "Open Weekly Review", keywords: ["weekly", "review"], action: () => openWeeklyReview() },
 ];
 
 let cmdkSelectedIndex = 0;
@@ -2523,6 +2672,8 @@ document.addEventListener("keydown", (e) => {
     else closePalette();
   } else if (e.key === "Escape" && !cmdkOverlay.hidden) {
     closePalette();
+  } else if (e.key === "Escape" && !document.getElementById("weekly-review-overlay").hidden) {
+    closeWeeklyReview();
   }
 });
 
@@ -2553,6 +2704,149 @@ cmdkInput.addEventListener("keydown", (e) => {
   }
 });
 
-hydrateFromServer().then(() => {
-  initBrief();
+function buildWeeklyReview() {
+  const weekAgo = Date.now() - 7 * 86400000;
+  const addedThisWeek = tasks.filter((t) => t.createdAt >= weekAgo);
+  const completedThisWeek = tasks
+    .filter((t) => t.done && t.completedAt && t.completedAt >= weekAgo)
+    .sort((a, b) => b.completedAt - a.completedAt);
+
+  const activeTasks = tasks.filter((t) => !t.done);
+  const stalledWaiting = activeTasks.filter((t) => t.waitingOn && waitingDays(t) >= WAITING_ESCALATE_DAYS);
+
+  const seenChainRoots = new Set();
+  const stalledChains = [];
+  activeTasks.forEach((t) => {
+    const info = getChainInfo(t);
+    if (info && info.isStalled && !seenChainRoots.has(info.root.id)) {
+      seenChainRoots.add(info.root.id);
+      stalledChains.push(info.newest);
+    }
+  });
+
+  const oldBacklogDays = 14;
+  const staleBacklog = activeTasks.filter(
+    (t) =>
+      !t.due &&
+      !t.waitingOn &&
+      (Date.now() - t.createdAt) / 86400000 >= oldBacklogDays &&
+      !stalledChains.some((c) => c.id === t.id)
+  );
+
+  return { addedThisWeek, completedThisWeek, stalledWaiting, stalledChains, staleBacklog };
+}
+
+function renderWeeklyReview() {
+  const data = buildWeeklyReview();
+  const body = document.getElementById("weekly-review-body");
+  body.innerHTML = "";
+
+  const statsRow = document.createElement("div");
+  statsRow.className = "weekly-review-stats";
+  [`${data.addedThisWeek.length} added this week`, `${data.completedThisWeek.length} completed this week`].forEach((label) => {
+    const pill = document.createElement("span");
+    pill.className = "stat-pill is-static";
+    pill.textContent = label;
+    statsRow.appendChild(pill);
+  });
+  body.appendChild(statsRow);
+
+  const completedSection = document.createElement("div");
+  completedSection.className = "weekly-review-section";
+  const completedHeading = document.createElement("h3");
+  completedHeading.textContent = "Completed this week";
+  completedSection.appendChild(completedHeading);
+
+  if (data.completedThisWeek.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-hint";
+    empty.textContent = "Nothing completed in the last 7 days.";
+    completedSection.appendChild(empty);
+  } else {
+    const groups = new Map();
+    data.completedThisWeek.forEach((t) => {
+      const dayKey = toISO(new Date(t.completedAt));
+      if (!groups.has(dayKey)) groups.set(dayKey, []);
+      groups.get(dayKey).push(t);
+    });
+    [...groups.entries()].forEach(([dayKey, items]) => {
+      const dayGroup = document.createElement("div");
+      dayGroup.className = "weekly-review-day-group";
+      const dayLabel = document.createElement("div");
+      dayLabel.className = "weekly-review-day-label";
+      dayLabel.textContent = new Date(`${dayKey}T00:00:00`).toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      });
+      dayGroup.appendChild(dayLabel);
+      items.forEach((t) => {
+        const item = document.createElement("div");
+        item.className = "weekly-review-item";
+        item.textContent = t.title;
+        dayGroup.appendChild(item);
+      });
+      completedSection.appendChild(dayGroup);
+    });
+  }
+  body.appendChild(completedSection);
+
+  const stalledSection = document.createElement("div");
+  stalledSection.className = "weekly-review-section";
+  const stalledHeading = document.createElement("h3");
+  stalledHeading.textContent = "Still hasn't moved";
+  stalledSection.appendChild(stalledHeading);
+
+  const stalledItems = [
+    ...data.stalledWaiting.map((t) => ({ t, sub: `Waiting on ${t.waitingOn} · ${Math.floor(waitingDays(t))}d` })),
+    ...data.stalledChains.map((t) => ({ t, sub: "Stalled follow-up chain" })),
+    ...data.staleBacklog.map((t) => ({
+      t,
+      sub: `In backlog · ${Math.floor((Date.now() - t.createdAt) / 86400000)}d old`,
+    })),
+  ];
+
+  if (stalledItems.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-hint";
+    empty.textContent = "Nothing's been stuck for a while — nice.";
+    stalledSection.appendChild(empty);
+  } else {
+    stalledItems.forEach(({ t, sub }) => {
+      const item = document.createElement("div");
+      item.className = "weekly-review-item";
+      item.textContent = t.title;
+      const subEl = document.createElement("div");
+      subEl.className = "weekly-review-item-sub";
+      subEl.textContent = sub;
+      item.appendChild(subEl);
+      stalledSection.appendChild(item);
+    });
+  }
+  body.appendChild(stalledSection);
+}
+
+function openWeeklyReview() {
+  renderWeeklyReview();
+  document.getElementById("weekly-review-overlay").hidden = false;
+}
+
+function closeWeeklyReview() {
+  document.getElementById("weekly-review-overlay").hidden = true;
+}
+
+document.getElementById("weekly-review-btn").addEventListener("click", openWeeklyReview);
+document.getElementById("weekly-review-close-btn").addEventListener("click", closeWeeklyReview);
+document.getElementById("weekly-review-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "weekly-review-overlay") closeWeeklyReview();
+});
+
+applyTimeMode();
+
+// Push any changes queued while offline before pulling from the server, so a
+// stale hydrate doesn't clobber local edits that haven't made it up yet.
+flushSyncQueue().then(() => {
+  hydrateFromServer().then(() => {
+    initBrief();
+  });
 });
