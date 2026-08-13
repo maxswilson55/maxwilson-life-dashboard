@@ -3,7 +3,7 @@ const SCOPE_KEY = "lifeDashboard.scope.v1";
 
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 const PRIORITY_EMOJI = { high: "🔴", medium: "🟡", low: "🔵" };
-const CATEGORY_EMOJI = { work: "💼", personal: "🏡" };
+const CATEGORY_EMOJI = { work: "💼", personal: "🏡", health: "🩺" };
 
 const QUOTES = [
   { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
@@ -216,6 +216,10 @@ function parseQuickAdd(rawText) {
   });
   text = text.replace(/#personal\b/i, () => {
     category = "personal";
+    return "";
+  });
+  text = text.replace(/#health\b/i, () => {
+    category = "health";
     return "";
   });
 
@@ -521,7 +525,20 @@ function renderTaskItem(task, draggable) {
     priorityBadge.classList.add(`priority-${task.priority}`);
   }
 
-  node.querySelector(".task-title").textContent = task.title;
+  const titleEl = node.querySelector(".task-title");
+  titleEl.textContent = task.title;
+  if (task.title.length > 70) {
+    const expandBtn = document.createElement("button");
+    expandBtn.type = "button";
+    expandBtn.className = "link-btn task-title-expand-btn";
+    expandBtn.textContent = "Show more";
+    expandBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const expanded = titleEl.classList.toggle("is-expanded");
+      expandBtn.textContent = expanded ? "Show less" : "Show more";
+    });
+    node.querySelector(".task-meta").prepend(expandBtn);
+  }
 
   const categoryBadge = node.querySelector(".category-badge");
   categoryBadge.textContent = `${CATEGORY_EMOJI[task.category]} ${task.category}`;

@@ -5,7 +5,7 @@
   --surface-hover: #181b22;
   --text: #f4f2f7;
   --muted: #9895a1;
-  --muted-2: #65636d;
+  --muted-2: #82808b;
   --border: rgba(255, 255, 255, 0.07);
   --border-strong: rgba(255, 255, 255, 0.12);
   --border-active: rgba(151, 91, 255, 0.45);
@@ -26,6 +26,8 @@
   --work-text: #7fb4ff;
   --personal-bg: rgba(82, 211, 155, 0.13);
   --personal-text: #52d39b;
+  --health-bg: rgba(244, 114, 182, 0.13);
+  --health-text: #f472b6;
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.2);
 }
@@ -179,6 +181,23 @@ body { padding-bottom: 3rem; }
 @media (max-width: 900px) {
   .content { grid-template-columns: 1fr; }
   .sidebar { position: static; }
+
+  .main-column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .hero-card { order: 1; }
+  .quick-add { order: 2; }
+  .board { order: 3; }
+  #waiting-section { order: 4; }
+  #connectors-bar { order: 5; }
+  #calendar-section,
+  #ticktick-section,
+  #gmail-section { order: 6; }
+  #journal-section { order: 7; }
+  .completed-section { order: 8; }
+  #ideas-section { order: 9; }
 }
 
 .hero-card {
@@ -1044,6 +1063,19 @@ body { padding-bottom: 3rem; }
   font-size: 0.9rem;
   word-break: break-word;
   color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-title.is-expanded {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.task-title-expand-btn {
+  font-size: 0.76rem;
 }
 
 .priority-badge, .category-badge {
@@ -1062,6 +1094,7 @@ body { padding-bottom: 3rem; }
 
 .category-work { color: var(--work-text); background: var(--work-bg); }
 .category-personal { color: var(--personal-text); background: var(--personal-bg); }
+.category-health { color: var(--health-text); background: var(--health-bg); }
 
 .task-meta {
   display: flex;
