@@ -109,14 +109,28 @@ function makeId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+const LIGATURE_MAP = {
+  "ﬀ": "ff",
+  "ﬁ": "fi",
+  "ﬂ": "fl",
+  "ﬃ": "ffi",
+  "ﬄ": "ffl",
+  "ﬅ": "st",
+  "ﬆ": "st",
+};
+
+function cleanPastedText(text) {
+  return text.replace(/[ﬀ-ﬆ]/g, (ch) => LIGATURE_MAP[ch] || ch);
+}
+
 function addTask({ title, category, priority, due, notes, followUpOf }) {
   tasks.push({
     id: makeId(),
-    title: title.trim(),
+    title: cleanPastedText(title.trim()),
     category,
     priority,
     due: due || null,
-    notes: notes.trim(),
+    notes: cleanPastedText(notes.trim()),
     done: false,
     createdAt: Date.now(),
     completedAt: null,
@@ -175,11 +189,11 @@ function handleTaskCheckboxChange(task, node) {
 function updateTask(id, { title, category, priority, due, notes }) {
   const t = tasks.find((x) => x.id === id);
   if (!t) return;
-  t.title = title.trim();
+  t.title = cleanPastedText(title.trim());
   t.category = category;
   t.priority = priority;
   t.due = due || null;
-  t.notes = notes.trim();
+  t.notes = cleanPastedText(notes.trim());
   saveTasks(tasks);
   render();
 }
@@ -301,8 +315,12 @@ function renderTaskItem(task) {
   checkbox.addEventListener("change", () => handleTaskCheckboxChange(task, node));
 
   const priorityBadge = node.querySelector(".priority-badge");
-  priorityBadge.textContent = `${PRIORITY_EMOJI[task.priority]} ${task.priority}`;
-  priorityBadge.classList.add(`priority-${task.priority}`);
+  if (task.priority === "medium") {
+    priorityBadge.remove();
+  } else {
+    priorityBadge.textContent = `${PRIORITY_EMOJI[task.priority]} ${task.priority}`;
+    priorityBadge.classList.add(`priority-${task.priority}`);
+  }
 
   node.querySelector(".task-title").textContent = task.title;
 
@@ -684,6 +702,36 @@ clearDateBtn.addEventListener("click", () => {
   updateDateUI();
 });
 
+const connectorsBar = document.getElementById("connectors-bar");
+const connectorSections = {
+  calendar: document.getElementById("calendar-section"),
+  ticktick: document.getElementById("ticktick-section"),
+  gmail: document.getElementById("gmail-section"),
+};
+const connectorMiniBtns = {
+  calendar: document.getElementById("calendar-connect-mini"),
+  ticktick: document.getElementById("ticktick-connect-mini"),
+  gmail: document.getElementById("gmail-connect-mini"),
+};
+const connectorStartUrls = {
+  calendar: "/api/auth/gcal/start",
+  ticktick: "/api/auth/ticktick/start",
+  gmail: "/api/auth/google/start",
+};
+
+Object.entries(connectorMiniBtns).forEach(([service, btn]) => {
+  btn.addEventListener("click", () => {
+    window.location.href = connectorStartUrls[service];
+  });
+});
+
+function setConnectorState(service, connected) {
+  connectorSections[service].hidden = !connected;
+  connectorMiniBtns[service].hidden = connected;
+  const anyDisconnected = Object.values(connectorMiniBtns).some((btn) => !btn.hidden);
+  connectorsBar.hidden = !anyDisconnected;
+}
+
 const gmailTemplate = document.getElementById("gmail-item-template");
 const gmailList = document.getElementById("gmail-suggestions");
 const gmailHint = document.getElementById("gmail-hint");
@@ -738,15 +786,15 @@ async function loadGmailSuggestions() {
     const res = await fetch("/api/gmail/action-items");
     if (res.status === 401) {
       gmailHint.textContent = "Connect Gmail to see emails that need a reply or are starred.";
-      gmailConnectBtn.hidden = false;
       gmailRefreshBtn.hidden = true;
+      setConnectorState("gmail", false);
       return;
     }
     if (!res.ok) throw new Error(`status ${res.status}`);
     const { items } = await res.json();
     const visible = items.filter((i) => !dismissedGmailThreads.has(i.threadId));
-    gmailConnectBtn.hidden = true;
     gmailRefreshBtn.hidden = false;
+    setConnectorState("gmail", true);
     if (visible.length === 0) {
       gmailHint.textContent = "Nothing needs attention right now.";
       gmailHint.hidden = false;
@@ -773,11 +821,12 @@ fetch("/api/auth/google/status")
     if (connected) {
       loadGmailSuggestions();
     } else {
-      gmailConnectBtn.hidden = false;
+      setConnectorState("gmail", false);
     }
   })
   .catch(() => {
     gmailHint.textContent = "Gmail integration isn't set up on this deployment yet.";
+    setConnectorState("gmail", false);
   });
 
 const ticktickTemplate = document.getElementById("ticktick-item-template");
@@ -834,15 +883,15 @@ async function loadTicktickSuggestions() {
     const res = await fetch("/api/ticktick/tasks");
     if (res.status === 401) {
       ticktickHint.textContent = "Connect TickTick to see your open tasks here.";
-      ticktickConnectBtn.hidden = false;
       ticktickRefreshBtn.hidden = true;
+      setConnectorState("ticktick", false);
       return;
     }
     if (!res.ok) throw new Error(`status ${res.status}`);
     const { tasks } = await res.json();
     const visible = tasks.filter((t) => !dismissedTicktickTasks.has(t.id));
-    ticktickConnectBtn.hidden = true;
     ticktickRefreshBtn.hidden = false;
+    setConnectorState("ticktick", true);
     if (visible.length === 0) {
       ticktickHint.textContent = "Nothing open in TickTick right now.";
       ticktickHint.hidden = false;
@@ -869,11 +918,12 @@ fetch("/api/auth/ticktick/status")
     if (connected) {
       loadTicktickSuggestions();
     } else {
-      ticktickConnectBtn.hidden = false;
+      setConnectorState("ticktick", false);
     }
   })
   .catch(() => {
     ticktickHint.textContent = "TickTick integration isn't set up on this deployment yet.";
+    setConnectorState("ticktick", false);
   });
 
 const calendarTemplate = document.getElementById("calendar-item-template");
@@ -958,14 +1008,14 @@ async function loadCalendarEvents() {
     const res = await fetch("/api/calendar/events");
     if (res.status === 401) {
       calendarHint.textContent = "Connect Google Calendar to see today's and upcoming events here.";
-      calendarConnectBtn.hidden = false;
       calendarRefreshBtn.hidden = true;
+      setConnectorState("calendar", false);
       return;
     }
     if (!res.ok) throw new Error(`status ${res.status}`);
     const { events } = await res.json();
-    calendarConnectBtn.hidden = true;
     calendarRefreshBtn.hidden = false;
+    setConnectorState("calendar", true);
     if (events.length === 0) {
       calendarHint.textContent = "Nothing on your calendar for the next 7 days.";
       calendarHint.hidden = false;
@@ -995,11 +1045,12 @@ fetch("/api/auth/gcal/status")
     if (connected) {
       loadCalendarEvents();
     } else {
-      calendarConnectBtn.hidden = false;
+      setConnectorState("calendar", false);
     }
   })
   .catch(() => {
     calendarHint.textContent = "Calendar integration isn't set up on this deployment yet.";
+    setConnectorState("calendar", false);
   });
 
 const STOCKS_KEY = "lifeDashboard.stocks.v1";
@@ -1064,6 +1115,14 @@ function renderStockItem(quote) {
       stocksHint.textContent = "Add a ticker to start tracking.";
       stocksHint.hidden = false;
     }
+    showToast(`Removed "${quote.symbol}"`, () => {
+      const restored = loadTickers();
+      if (!restored.includes(quote.symbol)) {
+        restored.push(quote.symbol);
+        saveTickers(restored);
+      }
+      loadStockQuotes();
+    });
   });
 
   return node;

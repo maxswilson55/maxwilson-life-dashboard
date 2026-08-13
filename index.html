@@ -99,37 +99,44 @@
       </div>
 
       <div class="column" id="col-someday">
-        <h2>No Date</h2>
+        <h2>Backlog</h2>
         <ul class="task-list" id="list-someday"></ul>
         <p class="empty-hint" id="hint-someday">Nothing here.</p>
       </div>
     </section>
 
-    <section class="gmail-section" id="calendar-section">
+    <section class="connectors-bar" id="connectors-bar" hidden>
+      <span class="connectors-label">Connect:</span>
+      <button type="button" id="calendar-connect-mini" class="connector-mini-btn" hidden>📅 Calendar</button>
+      <button type="button" id="ticktick-connect-mini" class="connector-mini-btn" hidden>✅ TickTick</button>
+      <button type="button" id="gmail-connect-mini" class="connector-mini-btn" hidden>📧 Gmail</button>
+    </section>
+
+    <section class="gmail-section" id="calendar-section" hidden>
       <div class="gmail-header">
         <h2>📅 Schedule</h2>
         <button id="calendar-connect-btn" class="gmail-connect-btn" hidden>Connect Calendar</button>
-        <button id="calendar-refresh-btn" class="link-btn" hidden>Refresh</button>
+        <button id="calendar-refresh-btn" class="link-btn" hidden aria-label="Refresh calendar events">Refresh</button>
       </div>
       <p class="empty-hint" id="calendar-hint">Connect Google Calendar to see today's and upcoming events here.</p>
       <ul class="task-list" id="calendar-events"></ul>
     </section>
 
-    <section class="gmail-section" id="ticktick-section">
+    <section class="gmail-section" id="ticktick-section" hidden>
       <div class="gmail-header">
         <h2>✅ TickTick</h2>
         <button id="ticktick-connect-btn" class="gmail-connect-btn" hidden>Connect TickTick</button>
-        <button id="ticktick-refresh-btn" class="link-btn" hidden>Refresh</button>
+        <button id="ticktick-refresh-btn" class="link-btn" hidden aria-label="Refresh TickTick tasks">Refresh</button>
       </div>
       <p class="empty-hint" id="ticktick-hint">Connect TickTick to see your open tasks here.</p>
       <ul class="task-list" id="ticktick-suggestions"></ul>
     </section>
 
-    <section class="gmail-section" id="gmail-section">
+    <section class="gmail-section" id="gmail-section" hidden>
       <div class="gmail-header">
         <h2>📧 Gmail</h2>
         <button id="gmail-connect-btn" class="gmail-connect-btn" hidden>Connect Gmail</button>
-        <button id="gmail-refresh-btn" class="link-btn" hidden>Refresh</button>
+        <button id="gmail-refresh-btn" class="link-btn" hidden aria-label="Refresh Gmail suggestions">Refresh</button>
       </div>
       <p class="empty-hint" id="gmail-hint">Connect Gmail to see emails that need a reply or are starred.</p>
       <ul class="task-list" id="gmail-suggestions"></ul>
@@ -185,7 +192,7 @@
     <section class="gmail-section" id="stocks-section">
       <div class="gmail-header">
         <h2>💹 Portfolio</h2>
-        <button id="stocks-refresh-btn" class="link-btn">Refresh</button>
+        <button id="stocks-refresh-btn" class="link-btn" aria-label="Refresh stock quotes">Refresh</button>
       </div>
       <form id="stock-add-form" class="stock-add-row">
         <input type="text" id="stock-symbol-input" placeholder="Add ticker (e.g. AAPL)" autocomplete="off" />
@@ -198,7 +205,7 @@
     <section class="gmail-section" id="news-section">
       <div class="gmail-header">
         <h2>📰 Business News</h2>
-        <button id="news-refresh-btn" class="link-btn">Refresh</button>
+        <button id="news-refresh-btn" class="link-btn" aria-label="Refresh business news">Refresh</button>
       </div>
       <p class="empty-hint" id="news-hint">Loading headlines…</p>
       <ul class="task-list" id="news-items"></ul>
