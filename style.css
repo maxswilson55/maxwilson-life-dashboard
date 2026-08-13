@@ -1061,6 +1061,45 @@ body { padding-bottom: 3rem; }
   background: var(--high-bg);
 }
 
+.task-chain-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-weight: 600;
+  font-size: inherit;
+  font-family: inherit;
+  color: var(--accent-bright);
+  background: var(--accent-soft);
+  border: none;
+  padding: 0.1rem 0.4rem;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.task-chain-badge:hover { filter: brightness(1.15); }
+
+.task-chain-badge.is-stalled {
+  color: var(--high);
+  background: var(--high-bg);
+}
+
+.task-chain-thread {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0.3rem 0 0.1rem 0.6rem;
+  border-left: 2px solid var(--border);
+  font-size: 0.76rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.task-chain-thread .is-current {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .task-followup-of {
   color: var(--accent-bright);
   font-style: italic;

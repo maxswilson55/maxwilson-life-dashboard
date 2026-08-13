@@ -119,12 +119,50 @@ function waitingDays(task) {
   return (Date.now() - task.waitingSince) / 86400000;
 }
 
+function getChainTasks(task) {
+  const ancestors = [];
+  let current = task;
+  const seenUp = new Set([task.id]);
+  while (current.followUpOf) {
+    const parent = tasks.find((t) => t.id === current.followUpOf);
+    if (!parent || seenUp.has(parent.id)) break;
+    ancestors.unshift(parent);
+    seenUp.add(parent.id);
+    current = parent;
+  }
+
+  const descendants = [];
+  current = task;
+  const seenDown = new Set([task.id]);
+  while (true) {
+    const child = tasks.find((t) => t.followUpOf === current.id);
+    if (!child || seenDown.has(child.id)) break;
+    descendants.push(child);
+    seenDown.add(child.id);
+    current = child;
+  }
+
+  return [...ancestors, task, ...descendants];
+}
+
+function getChainInfo(task) {
+  const chainTasks = getChainTasks(task);
+  if (chainTasks.length < 2) return null;
+  const root = chainTasks[0];
+  const newest = chainTasks[chainTasks.length - 1];
+  const ageDays = Math.floor((Date.now() - root.createdAt) / 86400000);
+  const stalledDays = Math.floor((Date.now() - newest.createdAt) / 86400000);
+  const isStalled = !newest.done && stalledDays >= WAITING_ESCALATE_DAYS;
+  return { chainTasks, root, newest, ageDays, steps: chainTasks.length, isStalled };
+}
+
 function backlogScore(task) {
   const ageDays = (Date.now() - task.createdAt) / 86400000;
   const priorityWeight = { high: 3, medium: 2, low: 1 }[task.priority] || 1;
-  const followUpBoost = task.followUpOf ? 1.3 : 1;
+  const chainInfo = getChainInfo(task);
+  const chainBoost = chainInfo ? (chainInfo.isStalled ? 2 : 1.3) : 1;
   const waitingEscalation = waitingDays(task) >= WAITING_ESCALATE_DAYS ? 3 : 1;
-  return ageDays * priorityWeight * followUpBoost * waitingEscalation;
+  return ageDays * priorityWeight * chainBoost * waitingEscalation;
 }
 
 const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -517,6 +555,34 @@ function renderTaskItem(task) {
     if (input === null) return;
     setWaitingOn(task.id, input.trim() || null);
   });
+
+  const chainBadge = node.querySelector(".task-chain-badge");
+  const chainThread = node.querySelector(".task-chain-thread");
+  const chainInfo = getChainInfo(task);
+  if (chainInfo) {
+    chainBadge.textContent = `🔗 ${chainInfo.steps} steps · started ${chainInfo.ageDays}d ago`;
+    chainBadge.classList.toggle("is-stalled", chainInfo.isStalled);
+    chainBadge.addEventListener("click", () => {
+      const wasHidden = chainThread.hidden;
+      chainThread.hidden = !wasHidden;
+      if (wasHidden) {
+        chainThread.innerHTML = "";
+        chainInfo.chainTasks.forEach((ct) => {
+          const li = document.createElement("li");
+          const created = new Date(ct.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+          const status = ct.done
+            ? `done ${new Date(ct.completedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+            : "open";
+          li.textContent = `${ct.title} — ${created} (${status})`;
+          if (ct.id === task.id) li.classList.add("is-current");
+          chainThread.appendChild(li);
+        });
+      }
+    });
+  } else {
+    chainBadge.remove();
+    chainThread.remove();
+  }
 
   node.querySelector(".task-followup").addEventListener("click", () => startFollowUp(task));
   node.querySelector(".task-edit").addEventListener("click", () => enterEditMode(task));
