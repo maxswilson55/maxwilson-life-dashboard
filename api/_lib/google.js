@@ -92,6 +92,38 @@ export async function listUpcomingEvents(accessToken) {
     }));
 }
 
+export async function createCalendarEvent(accessToken, { title, dateISO, time }) {
+  // Naive local date/time + an explicit IANA zone, rather than building a JS Date
+  // and calling toISOString() (which would silently use the server's UTC runtime
+  // clock, not Max's local time, and get DST wrong for half the year).
+  const timeZone = "Europe/London";
+  const [h, m] = time.split(":").map(Number);
+  const endH = String(Math.floor((h * 60 + m + 15) / 60) % 24).padStart(2, "0");
+  const endM = String((h * 60 + m + 15) % 60).padStart(2, "0");
+
+  const body = {
+    summary: title,
+    start: { dateTime: `${dateISO}T${time}:00`, timeZone },
+    end: { dateTime: `${dateISO}T${endH}:${endM}:00`, timeZone },
+    reminders: {
+      useDefault: false,
+      overrides: [{ method: "popup", minutes: 0 }],
+    },
+  };
+
+  const res = await fetch(`${CALENDAR_BASE}/calendars/primary/events`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Calendar create event failed: ${res.status}`);
+  const data = await res.json();
+  return { id: data.id, link: data.htmlLink };
+}
+
 export async function findActionItems(accessToken) {
   const profile = await gmailFetch(accessToken, "/profile");
   const myEmail = profile.emailAddress;

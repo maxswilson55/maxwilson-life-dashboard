@@ -48,6 +48,59 @@ async function send(req, res) {
   }
 }
 
+function nowInLondon() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((p) => p.type === type).value;
+  return { dateISO: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+}
+
+async function checkReminders(req, res) {
+  if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  const subRaw = await kvGet(SUBSCRIPTION_KEY);
+  const tasksRaw = await kvGet("sync:tasks");
+  if (!subRaw || !tasksRaw) {
+    res.status(200).json({ sent: 0, reason: "no_subscription_or_tasks" });
+    return;
+  }
+
+  const subscription = JSON.parse(subRaw);
+  const tasks = JSON.parse(tasksRaw);
+  const { dateISO, time } = nowInLondon();
+
+  const due = tasks.filter(
+    (t) => t.itemType === "reminder" && !t.done && !t.pushSentAt && t.due === dateISO && t.dueTime && t.dueTime <= time
+  );
+
+  let sentCount = 0;
+  for (const reminder of due) {
+    try {
+      await sendPush(subscription, { title: "🔔 Reminder", body: reminder.title, url: "/" });
+      reminder.pushSentAt = Date.now();
+      sentCount++;
+    } catch (err) {
+      console.error("Reminder push failed", reminder.id, err);
+    }
+  }
+
+  if (sentCount > 0) {
+    await kvSet("sync:tasks", JSON.stringify(tasks));
+  }
+
+  res.status(200).json({ sent: sentCount });
+}
+
 export default async function handler(req, res) {
   switch (req.query.action) {
     case "vapid-public-key":
@@ -58,6 +111,8 @@ export default async function handler(req, res) {
       return unsubscribe(req, res);
     case "send":
       return send(req, res);
+    case "check-reminders":
+      return checkReminders(req, res);
     default:
       res.status(404).end();
   }

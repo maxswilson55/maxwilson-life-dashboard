@@ -68,7 +68,7 @@ const QUOTES = [
   { text: "The most difficult thing is the decision to act, the rest is merely tenacity.", author: "Amelia Earhart" },
 ];
 
-/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null, waitingOn:string|null, waitingSince:number|null, manualOrder:number|null, estimateMinutes:number|null, recurrence:'daily'|'weekly'|'monthly'|null}} Task */
+/** @typedef {{id:string, title:string, category:'work'|'personal', priority:'high'|'medium'|'low', due:string|null, notes:string, done:boolean, createdAt:number, completedAt:number|null, followUpOf:string|null, waitingOn:string|null, waitingSince:number|null, manualOrder:number|null, estimateMinutes:number|null, recurrence:'daily'|'weekly'|'monthly'|null, itemType:'task'|'reminder', dueTime:string|null, pushSentAt:number|null, calendarEventId:string|null}} Task */
 
 function loadTasks() {
   try {
@@ -293,8 +293,8 @@ function cleanPastedText(text) {
   return text.replace(/[ﬀ-ﬆ]/g, (ch) => LIGATURE_MAP[ch] || ch);
 }
 
-function addTask({ title, category, priority, due, notes, followUpOf, estimateMinutes, recurrence }) {
-  tasks.push({
+function addTask({ title, category, priority, due, notes, followUpOf, estimateMinutes, recurrence, itemType, dueTime }) {
+  const task = {
     id: makeId(),
     title: cleanPastedText(title.trim()),
     category,
@@ -310,9 +310,15 @@ function addTask({ title, category, priority, due, notes, followUpOf, estimateMi
     manualOrder: null,
     estimateMinutes: estimateMinutes || null,
     recurrence: recurrence || null,
-  });
+    itemType: itemType === "reminder" ? "reminder" : "task",
+    dueTime: dueTime || null,
+    pushSentAt: null,
+    calendarEventId: null,
+  };
+  tasks.push(task);
   saveTasks(tasks);
   render();
+  return task;
 }
 
 function nextRecurrenceDue(task) {
@@ -411,7 +417,7 @@ function handleTaskCheckboxChange(task, node) {
   }, 650);
 }
 
-function updateTask(id, { title, category, priority, due, notes, estimateMinutes, recurrence }) {
+function updateTask(id, { title, category, priority, due, notes, estimateMinutes, recurrence, itemType, dueTime }) {
   const t = tasks.find((x) => x.id === id);
   if (!t) return;
   t.title = cleanPastedText(title.trim());
@@ -421,6 +427,10 @@ function updateTask(id, { title, category, priority, due, notes, estimateMinutes
   t.notes = cleanPastedText(notes.trim());
   t.estimateMinutes = estimateMinutes || null;
   t.recurrence = recurrence || null;
+  t.itemType = itemType === "reminder" ? "reminder" : "task";
+  const newDueTime = dueTime || null;
+  if (newDueTime !== t.dueTime) t.pushSentAt = null;
+  t.dueTime = newDueTime;
   saveTasks(tasks);
   render();
 }
@@ -589,6 +599,13 @@ function formatDue(due) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function formatTime(time) {
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 const template = document.getElementById("task-item-template");
 
 function renderTaskItem(task, draggable) {
@@ -637,7 +654,7 @@ function renderTaskItem(task, draggable) {
 
   const dueEl = node.querySelector(".task-due");
   if (task.due) {
-    dueEl.textContent = formatDue(task.due);
+    dueEl.textContent = formatDue(task.due) + (task.dueTime ? ` · ${formatTime(task.dueTime)}` : "");
     if (task.due < todayISO() && !task.done) dueEl.classList.add("is-overdue");
   } else {
     dueEl.remove();
@@ -764,14 +781,25 @@ function renderList(listEl, hintEl, list, sectionKey, draggable) {
 
 function render() {
   const visible = tasks.filter(inScope);
-  const active = visible.filter((t) => !t.done);
+  const active = visible.filter((t) => !t.done && t.itemType !== "reminder");
+  const activeReminders = visible
+    .filter((t) => !t.done && t.itemType === "reminder")
+    .sort((a, b) => {
+      const ad = a.due || "9999-99-99";
+      const bd = b.due || "9999-99-99";
+      if (ad !== bd) return ad < bd ? -1 : 1;
+      const at = a.dueTime || "99:99";
+      const bt = b.dueTime || "99:99";
+      if (at !== bt) return at < bt ? -1 : 1;
+      return a.createdAt - b.createdAt;
+    });
   const today = todayISO();
 
   let todayAndOverdue = sortTasks(active.filter((t) => t.due && t.due <= today));
   let upcoming = sortTasks(active.filter((t) => t.due && t.due > today));
   let someday = sortTasks(active.filter((t) => !t.due));
   let completed = visible
-    .filter((t) => t.done)
+    .filter((t) => t.done && t.itemType !== "reminder")
     .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
   if (statFilter === "dueToday") {
@@ -804,10 +832,23 @@ function render() {
     .filter((t) => t.waitingOn)
     .sort((a, b) => (a.waitingSince || 0) - (b.waitingSince || 0));
   renderWaitingSection(waitingTasks);
+  renderRemindersSection(activeReminders);
 
   renderStats(active, todayAndOverdue, completed);
   renderHero(todayAndOverdue, upcoming, rankedBacklog);
   renderHeatmap();
+}
+
+function renderRemindersSection(reminders) {
+  const listEl = document.getElementById("reminders-list");
+  const hintEl = document.getElementById("reminders-hint");
+  listEl.innerHTML = "";
+  if (reminders.length === 0) {
+    hintEl.hidden = false;
+    return;
+  }
+  hintEl.hidden = true;
+  reminders.forEach((t) => listEl.appendChild(renderTaskItem(t)));
 }
 
 function renderWaitingSection(waitingTasks) {
@@ -1207,6 +1248,30 @@ advancedToggleBtn.addEventListener("click", () => {
   setAdvancedOpen(quickAddAdvanced.hidden);
 });
 
+let quickAddType = "task";
+const quickAddTypeToggle = document.getElementById("quick-add-type-toggle");
+const quickAddReminderHint = document.getElementById("quick-add-reminder-hint");
+const taskDueTimeInput = document.getElementById("task-due-time");
+const taskEstimateInput = document.getElementById("task-estimate");
+
+function setQuickAddType(type) {
+  quickAddType = type === "reminder" ? "reminder" : "task";
+  const isReminder = quickAddType === "reminder";
+  quickAddTypeToggle.querySelectorAll(".type-toggle-btn").forEach((btn) => {
+    const active = btn.dataset.type === quickAddType;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-checked", String(active));
+  });
+  quickAddReminderHint.hidden = !isReminder;
+  taskDueTimeInput.hidden = !isReminder;
+  taskEstimateInput.hidden = isReminder;
+  if (isReminder) setAdvancedOpen(true);
+}
+
+quickAddTypeToggle.querySelectorAll(".type-toggle-btn").forEach((btn) => {
+  btn.addEventListener("click", () => setQuickAddType(btn.dataset.type));
+});
+
 function updateQuickAddPreview() {
   const raw = document.getElementById("task-title").value;
   const parsed = parseQuickAdd(raw);
@@ -1230,6 +1295,7 @@ function resetForm() {
   document.getElementById("task-priority").value = "medium";
   updateDateUI();
   setAdvancedOpen(false);
+  setQuickAddType("task");
   updateQuickAddPreview();
 }
 
@@ -1244,6 +1310,8 @@ function enterEditMode(task) {
   document.getElementById("task-recurrence").value = task.recurrence || "";
   dueInput.value = task.due || "";
   updateDateUI();
+  setQuickAddType(task.itemType || "task");
+  taskDueTimeInput.value = task.dueTime || "";
   setAdvancedOpen(true);
   updateQuickAddPreview();
   taskSubmitBtn.textContent = "Save";
@@ -1278,6 +1346,23 @@ function exitFollowUpMode() {
 
 followupCancelBtn.addEventListener("click", exitFollowUpMode);
 
+async function maybeCreateCalendarEvent(task) {
+  if (!task || task.itemType !== "reminder" || !task.due || !task.dueTime || task.calendarEventId) return;
+  try {
+    const res = await fetch("/api/calendar/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: task.title, dateISO: task.due, time: task.dueTime }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    task.calendarEventId = data.id;
+    saveTasks(tasks);
+  } catch (err) {
+    console.error("Calendar event creation failed", err);
+  }
+}
+
 document.getElementById("task-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const rawTitle = document.getElementById("task-title").value;
@@ -1292,17 +1377,22 @@ document.getElementById("task-form").addEventListener("submit", (e) => {
     notes: document.getElementById("task-notes").value,
     estimateMinutes: estimateRaw ? Number(estimateRaw) : null,
     recurrence: document.getElementById("task-recurrence").value || null,
+    itemType: quickAddType,
+    dueTime: taskDueTimeInput.value || null,
   };
   if (editingTaskId) {
     updateTask(editingTaskId, payload);
+    maybeCreateCalendarEvent(tasks.find((t) => t.id === editingTaskId));
     editingTaskId = null;
     taskSubmitBtn.textContent = "Add";
     taskCancelEditBtn.hidden = true;
   } else if (followUpOfId) {
-    addTask({ ...payload, followUpOf: followUpOfId });
+    const newTask = addTask({ ...payload, followUpOf: followUpOfId });
+    maybeCreateCalendarEvent(newTask);
     exitFollowUpMode();
   } else {
-    addTask(payload);
+    const newTask = addTask(payload);
+    maybeCreateCalendarEvent(newTask);
   }
   resetForm();
   document.getElementById("task-title").focus();
@@ -1952,20 +2042,37 @@ const journalTaskTemplate = document.getElementById("journal-task-item-template"
 const journalMoodHistoryEl = document.getElementById("journal-mood-history");
 const journalHistoryHeader = document.getElementById("journal-history-header");
 
-function renderJournalTaskSuggestion(taskTitle) {
+function renderJournalTaskSuggestion(item) {
   const node = journalTaskTemplate.content.firstElementChild.cloneNode(true);
-  node.querySelector(".journal-task-title").textContent = taskTitle;
-  node.querySelector(".gmail-add-btn").addEventListener("click", (e) => {
+  node.querySelector(".journal-task-title").textContent = item.title;
+
+  const badge = node.querySelector(".journal-task-type-badge");
+  const suggestedType = item.type === "task" ? "task" : "reminder";
+  badge.textContent = suggestedType === "task" ? "suggested: task" : "suggested: reminder";
+
+  const taskBtn = node.querySelector(".journal-add-task-btn");
+  const reminderBtn = node.querySelector(".journal-add-reminder-btn");
+  taskBtn.classList.toggle("is-suggested", suggestedType === "task");
+  reminderBtn.classList.toggle("is-suggested", suggestedType === "reminder");
+
+  function addAs(itemType, clickedBtn) {
     addTask({
-      title: taskTitle,
+      title: item.title,
       category: "personal",
       priority: "medium",
       due: "",
       notes: "From daily check-in",
+      itemType,
     });
-    e.target.textContent = "Added ✓";
-    e.target.classList.add("is-added");
-  });
+    taskBtn.disabled = true;
+    reminderBtn.disabled = true;
+    clickedBtn.textContent = "Added ✓";
+    clickedBtn.classList.add("is-added");
+  }
+
+  taskBtn.addEventListener("click", () => addAs("task", taskBtn));
+  reminderBtn.addEventListener("click", () => addAs("reminder", reminderBtn));
+
   return node;
 }
 
@@ -2013,7 +2120,7 @@ async function submitJournalEntry() {
 
     journalMoodBadge.textContent = `${mood.emoji} ${mood.label} (${mood.score}/10)`;
     journalSuggestedTasks.innerHTML = "";
-    (tasks || []).forEach((t) => journalSuggestedTasks.appendChild(renderJournalTaskSuggestion(t.title)));
+    (tasks || []).forEach((t) => journalSuggestedTasks.appendChild(renderJournalTaskSuggestion(t)));
     journalResult.hidden = false;
     journalStatus.textContent = "";
     renderMoodHistory();
@@ -2516,6 +2623,7 @@ const CMDK_STATIC_COMMANDS = [
     },
   },
   { icon: "📍", label: "Jump to Backlog", keywords: ["backlog"], action: () => scrollToSection("col-someday") },
+  { icon: "📍", label: "Jump to Reminders", keywords: ["reminders", "reminder"], action: () => scrollToSection("reminders-section") },
   { icon: "📍", label: "Jump to Waiting On", keywords: ["waiting"], action: () => scrollToSection("waiting-section") },
   {
     icon: "📍",
@@ -2577,9 +2685,9 @@ function buildCmdkResults(query) {
   matchedTasks.forEach((t) => {
     results.push({
       type: "task",
-      icon: PRIORITY_EMOJI[t.priority] || "•",
+      icon: t.itemType === "reminder" ? "🔔" : PRIORITY_EMOJI[t.priority] || "•",
       label: t.title,
-      sublabel: t.due ? formatDue(t.due) : "",
+      sublabel: t.due ? formatDue(t.due) + (t.dueTime ? ` ${formatTime(t.dueTime)}` : "") : "",
       action: () => jumpToTask(t.id),
       onComplete: () => {
         toggleDone(t.id);
@@ -2706,12 +2814,12 @@ cmdkInput.addEventListener("keydown", (e) => {
 
 function buildWeeklyReview() {
   const weekAgo = Date.now() - 7 * 86400000;
-  const addedThisWeek = tasks.filter((t) => t.createdAt >= weekAgo);
+  const addedThisWeek = tasks.filter((t) => t.itemType !== "reminder" && t.createdAt >= weekAgo);
   const completedThisWeek = tasks
-    .filter((t) => t.done && t.completedAt && t.completedAt >= weekAgo)
+    .filter((t) => t.itemType !== "reminder" && t.done && t.completedAt && t.completedAt >= weekAgo)
     .sort((a, b) => b.completedAt - a.completedAt);
 
-  const activeTasks = tasks.filter((t) => !t.done);
+  const activeTasks = tasks.filter((t) => !t.done && t.itemType !== "reminder");
   const stalledWaiting = activeTasks.filter((t) => t.waitingOn && waitingDays(t) >= WAITING_ESCALATE_DAYS);
 
   const seenChainRoots = new Set();

@@ -4,7 +4,7 @@ import { encrypt } from "../../_lib/crypto.js";
 
 function start(req, res) {
   const redirectUri = `https://${req.headers.host}/api/auth/gcal/callback`;
-  const scope = "https://www.googleapis.com/auth/calendar.readonly";
+  const scope = "https://www.googleapis.com/auth/calendar.events";
   const state = crypto.randomUUID();
 
   res.setHeader(

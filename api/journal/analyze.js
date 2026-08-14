@@ -91,9 +91,15 @@ export default async function handler(req, res) {
   }
 
   const prompt = `You are analyzing a personal daily journal entry. Read the entry and respond with ONLY valid JSON (no markdown fences, no commentary) in exactly this shape:
-{"mood": {"emoji": "<single emoji>", "label": "<one or two word mood label>", "score": <integer 1-10, 1=very bad 10=excellent>}, "tasks": [{"title": "<short actionable task title>"}]}
+{"mood": {"emoji": "<single emoji>", "label": "<one or two word mood label>", "score": <integer 1-10, 1=very bad 10=excellent>}, "tasks": [{"title": "<short actionable item title>", "type": "task"|"reminder"}]}
 
-Only include genuinely actionable to-dos the person mentioned (things they said they need to do, forgot to do, or are planning to do) — not every sentence, and not things already done. If there are none, use an empty array. Keep task titles short and action-oriented (imperative form, e.g. "Call the dentist").
+Only include genuinely actionable to-dos the person mentioned (things they said they need to do, forgot to do, or are planning to do) — not every sentence, and not things already done. If there are none, use an empty array. Keep titles short and action-oriented (imperative form, e.g. "Call the dentist").
+
+Classify each item's "type":
+- "reminder": a quick, one-off nudge with no real effort — picking something up, a short message to send, a small errand, something to remember rather than to work on (e.g. "Pick up dry cleaning", "Text Sarah back", "Put the bins out").
+- "task": anything that takes actual work, has multiple steps, or is ongoing (e.g. "Finish the quarterly report", "Book and prepare for the dentist appointment", "Research flights for the trip").
+
+When in doubt between the two, prefer "reminder" — the goal is to keep the task list for things that genuinely need effort, not everything mentioned in passing.
 
 Journal entry:
 """

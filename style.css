@@ -158,6 +158,43 @@ body { padding-bottom: 3rem; }
   font-weight: 600;
 }
 
+.quick-add-type-toggle {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+  margin-bottom: 0.6rem;
+}
+
+.type-toggle-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.type-toggle-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-bright);
+  font-weight: 600;
+}
+
+.quick-add-reminder-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  margin: -0.2rem 0 0.6rem;
+}
+
 .content {
   max-width: 1200px;
   margin: 0 auto;
@@ -200,14 +237,15 @@ body { padding-bottom: 3rem; }
   .hero-card { order: 1; }
   .quick-add { order: 2; }
   .board { order: 3; }
-  #waiting-section { order: 4; }
-  #connectors-bar { order: 5; }
+  #reminders-section { order: 4; }
+  #waiting-section { order: 5; }
+  #connectors-bar { order: 6; }
   #calendar-section,
   #ticktick-section,
-  #gmail-section { order: 6; }
-  #journal-section { order: 7; }
-  .completed-section { order: 8; }
-  #ideas-section { order: 9; }
+  #gmail-section { order: 7; }
+  #journal-section { order: 8; }
+  .completed-section { order: 9; }
+  #ideas-section { order: 10; }
 }
 
 .hero-card {
@@ -515,7 +553,9 @@ body { padding-bottom: 3rem; }
 #task-form input[type="text"],
 #task-form textarea,
 #task-form select,
-#task-form input[type="date"] {
+#task-form input[type="date"],
+#task-form input[type="time"],
+#task-form input[type="number"] {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -904,6 +944,44 @@ body { padding-bottom: 3rem; }
   border-color: var(--personal-text);
   color: var(--personal-text);
   pointer-events: none;
+}
+
+.journal-task-type-badge {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.journal-add-task-btn,
+.journal-add-reminder-btn {
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  background: transparent;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.journal-add-task-btn.is-suggested,
+.journal-add-reminder-btn.is-suggested {
+  border-color: var(--border-active);
+  color: var(--accent-bright);
+}
+
+.journal-add-task-btn.is-added,
+.journal-add-reminder-btn.is-added {
+  border-color: var(--personal-text);
+  color: var(--personal-text);
+  pointer-events: none;
+}
+
+.journal-add-task-btn:disabled,
+.journal-add-reminder-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .gmail-dismiss-btn {

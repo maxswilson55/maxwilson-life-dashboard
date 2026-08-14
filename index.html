@@ -59,11 +59,18 @@
         <button type="button" class="link-btn" id="followup-cancel-btn">Cancel</button>
       </div>
       <form id="task-form">
+        <div class="quick-add-type-toggle" id="quick-add-type-toggle" role="radiogroup" aria-label="Task or reminder">
+          <button type="button" class="type-toggle-btn is-active" data-type="task" role="radio" aria-checked="true">📋 Task</button>
+          <button type="button" class="type-toggle-btn" data-type="reminder" role="radio" aria-checked="false">🔔 Reminder</button>
+        </div>
         <div class="quick-add-input-row">
           <input type="text" id="task-title" placeholder='Add a task… try "chase dentist letter tomorrow p1 #work"' autocomplete="off" required />
           <button type="submit" id="task-submit-btn">Add</button>
           <button type="button" id="task-cancel-edit-btn" class="link-btn" hidden>Cancel</button>
         </div>
+        <p class="quick-add-reminder-hint" id="quick-add-reminder-hint" hidden>
+          🔔 Reminders are quick nudges, not real tasks — they get their own list, can push a notification and (if Calendar is connected) add themselves to your calendar at the time you set.
+        </p>
         <p class="quick-add-preview" id="quick-add-preview" hidden></p>
         <button type="button" id="advanced-toggle-btn" class="link-btn quick-add-advanced-toggle" aria-expanded="false">▸ More options</button>
         <div class="quick-add-advanced" id="quick-add-advanced" hidden>
@@ -96,6 +103,7 @@
               <button type="button" class="date-chip date-chip-clear" id="clear-date-btn" hidden>✕</button>
             </div>
             <input type="date" id="task-due" aria-label="Due date" class="native-date-input" />
+            <input type="time" id="task-due-time" aria-label="Reminder time" class="native-time-input" hidden />
           </div>
           <textarea id="task-notes" placeholder="Notes (optional)" rows="2"></textarea>
         </div>
@@ -121,6 +129,14 @@
         <ul class="task-list" id="list-someday"></ul>
         <p class="empty-hint" id="hint-someday">Nothing here.</p>
       </div>
+    </section>
+
+    <section class="gmail-section" id="reminders-section">
+      <div class="gmail-header">
+        <h2>🔔 Reminders</h2>
+      </div>
+      <p class="empty-hint" id="reminders-hint">No reminders set.</p>
+      <ul class="task-list" id="reminders-list"></ul>
     </section>
 
     <section class="gmail-section" id="waiting-section">
@@ -369,10 +385,12 @@
       <div class="task-body">
         <div class="task-title-row">
           <span class="task-title journal-task-title"></span>
+          <span class="journal-task-type-badge"></span>
         </div>
       </div>
       <div class="gmail-actions">
-        <button class="gmail-add-btn" type="button">+ Add as task</button>
+        <button class="journal-add-task-btn" type="button">📋 Task</button>
+        <button class="journal-add-reminder-btn" type="button">🔔 Reminder</button>
       </div>
     </li>
   </template>
