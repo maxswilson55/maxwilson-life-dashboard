@@ -2684,6 +2684,29 @@ async function hydrateFromServer() {
   syncToServer("ideas", loadIdeas());
 }
 
+// A manual, on-demand escape hatch: automatic sync depends on the app
+// having loaded the latest code (via the page-load hydrate below, and the
+// service-worker auto-update), which can lag behind a fresh deploy on a
+// device that's rarely fully closed. This button runs the exact same
+// hydrate-and-merge logic immediately, with a visible result, so a user
+// isn't stuck guessing whether "closing and reopening" actually worked.
+const syncNowBtn = document.getElementById("sync-now-btn");
+if (syncNowBtn) {
+  syncNowBtn.addEventListener("click", async () => {
+    syncNowBtn.disabled = true;
+    syncNowBtn.textContent = "🔄 Syncing…";
+    try {
+      await hydrateFromServer();
+      showToast("✅ Synced with server.");
+    } catch (err) {
+      showToast("⚠️ Sync failed — check your connection.");
+    } finally {
+      syncNowBtn.disabled = false;
+      syncNowBtn.textContent = "🔄 Sync";
+    }
+  });
+}
+
 const cmdkOverlay = document.getElementById("cmdk-overlay");
 const cmdkInput = document.getElementById("cmdk-input");
 const cmdkResultsEl = document.getElementById("cmdk-results");
