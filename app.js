@@ -2582,21 +2582,44 @@ const SYNC_KEYS = {
   stocks: STOCKS_KEY,
 };
 
+function mergeArraysById(existingArr, incomingArr) {
+  const byId = new Map();
+  for (const item of existingArr) if (item && item.id) byId.set(item.id, item);
+  for (const item of incomingArr) if (item && item.id) byId.set(item.id, item);
+  return [...byId.values()];
+}
+
+// The server already merges on every POST (see api/sync/[key].js), but a
+// plain GET — which is all a page-load hydrate or a syncToServer response
+// is — just returns whatever's stored, with no awareness of this device's
+// own local data. Blindly replacing local state with that would reopen the
+// exact bug the server-side merge fixed: a device with newer local-only
+// data (e.g. reminders added since this device last synced) would lose it
+// the moment it hydrates. So merge here too, locally, before overwriting.
 function applySyncedValue(serverKey, value) {
   const localKey = SYNC_KEYS[serverKey];
   if (!localKey || value == null) return;
-  localStorage.setItem(localKey, JSON.stringify(value));
+
   if (serverKey === "tasks") {
-    tasks = value;
+    tasks = mergeArraysById(tasks, value);
+    localStorage.setItem(localKey, JSON.stringify(tasks));
     reconcileDeletions();
     render();
   } else if (serverKey === "ideas") {
+    const merged = mergeArraysById(loadIdeas(), value);
+    localStorage.setItem(localKey, JSON.stringify(merged));
     reconcileDeletions();
     renderIdeas();
   } else if (serverKey === "journal") {
+    const merged = { ...loadJournal(), ...value };
+    localStorage.setItem(localKey, JSON.stringify(merged));
     initJournal();
   } else if (serverKey === "stocks") {
+    const merged = [...new Set([...loadTickers(), ...value])];
+    localStorage.setItem(localKey, JSON.stringify(merged));
     loadStockQuotes();
+  } else {
+    localStorage.setItem(localKey, JSON.stringify(value));
   }
 }
 
@@ -2628,6 +2651,17 @@ async function hydrateFromServer() {
 
     applySyncedValue(serverKey, value);
   }
+
+  // If merging with local data (above) picked up anything the server didn't
+  // have — e.g. this device had unsynced local-only tasks/ideas from before
+  // its last successful sync — push the merged result back up once so the
+  // server (and other devices, next time they sync) catch up too. Safe to
+  // call unconditionally: if nothing local was gained, this just re-sends
+  // what the server already has, which the server-side merge treats as a
+  // no-op. Deliberately NOT recursive — this runs once per hydrate, not on
+  // every syncToServer response, so there's no risk of it looping.
+  syncToServer("tasks", tasks);
+  syncToServer("ideas", loadIdeas());
 }
 
 const cmdkOverlay = document.getElementById("cmdk-overlay");
