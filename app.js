@@ -552,6 +552,12 @@ async function syncToServer(key, value) {
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
     clearQueuedSync(key);
+    // The server merges this save with whatever another device may have added
+    // since our last hydrate, rather than blindly overwriting it — apply that
+    // merged result back locally so this device doesn't sit stale until its
+    // next full reload.
+    const data = await res.json();
+    if (data && data.value !== undefined) applySyncedValue(key, data.value);
   } catch (err) {
     console.error(`Sync to server failed for "${key}"`, err);
     queueFailedSync(key, value);
@@ -2518,6 +2524,22 @@ const SYNC_KEYS = {
   stocks: STOCKS_KEY,
 };
 
+function applySyncedValue(serverKey, value) {
+  const localKey = SYNC_KEYS[serverKey];
+  if (!localKey || value == null) return;
+  localStorage.setItem(localKey, JSON.stringify(value));
+  if (serverKey === "tasks") {
+    tasks = value;
+    render();
+  } else if (serverKey === "ideas") {
+    renderIdeas();
+  } else if (serverKey === "journal") {
+    initJournal();
+  } else if (serverKey === "stocks") {
+    loadStockQuotes();
+  }
+}
+
 async function hydrateFromServer() {
   const results = await Promise.allSettled(
     Object.entries(SYNC_KEYS).map(async ([serverKey, localKey]) => {
@@ -2527,11 +2549,6 @@ async function hydrateFromServer() {
       return { serverKey, localKey, value };
     })
   );
-
-  let tasksChanged = false;
-  let ideasChanged = false;
-  let journalChanged = false;
-  let stocksChanged = false;
 
   for (const result of results) {
     if (result.status !== "fulfilled") continue;
@@ -2549,23 +2566,8 @@ async function hydrateFromServer() {
       continue;
     }
 
-    localStorage.setItem(localKey, JSON.stringify(value));
-    if (serverKey === "tasks") {
-      tasks = value;
-      tasksChanged = true;
-    } else if (serverKey === "ideas") {
-      ideasChanged = true;
-    } else if (serverKey === "journal") {
-      journalChanged = true;
-    } else if (serverKey === "stocks") {
-      stocksChanged = true;
-    }
+    applySyncedValue(serverKey, value);
   }
-
-  if (tasksChanged) render();
-  if (ideasChanged) renderIdeas();
-  if (journalChanged) initJournal();
-  if (stocksChanged) loadStockQuotes();
 }
 
 const cmdkOverlay = document.getElementById("cmdk-overlay");
