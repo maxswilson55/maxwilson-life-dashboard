@@ -2059,8 +2059,28 @@ loadNews();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("service-worker.js").catch((err) => {
-      console.warn("Service worker registration failed", err);
+    navigator.serviceWorker
+      .register("service-worker.js")
+      .then((reg) => {
+        // A browser's default heuristics for re-checking service-worker.js
+        // for changes can be lazy, so on an installed PWA (no browser
+        // reload button, no "new version" prompt) a stale old worker can
+        // keep serving a stale old app.js for multiple app opens in a row.
+        // Forcing an update check on every load, then reloading once the
+        // new worker actually takes over, means a real code change (like a
+        // sync-logic fix) reaches the phone the very next time it's opened
+        // instead of requiring the user to relaunch it several times.
+        reg.update().catch(() => {});
+      })
+      .catch((err) => {
+        console.warn("Service worker registration failed", err);
+      });
+
+    let hasReloadedForUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hasReloadedForUpdate) return;
+      hasReloadedForUpdate = true;
+      window.location.reload();
     });
   });
 }
