@@ -3097,3 +3097,20 @@ flushSyncQueue().then(() => {
     initBrief();
   });
 });
+
+// A page-load hydrate alone only catches another device's changes when this
+// device happens to reload — which, left open all day (or on a phone that
+// gets backgrounded rather than closed), can be rarely. Re-hydrating
+// whenever the app becomes visible again, plus on a standing timer while
+// it's open, means a reminder added on one device shows up on another
+// without anyone needing to manually reload or press the Sync button.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    flushSyncQueue().then(() => hydrateFromServer());
+  }
+});
+setInterval(() => {
+  if (document.visibilityState === "visible") {
+    flushSyncQueue().then(() => hydrateFromServer());
+  }
+}, 3 * 60 * 1000);
