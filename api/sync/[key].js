@@ -1,6 +1,6 @@
 import { kvGet, kvSet } from "../_lib/store.js";
 
-const ALLOWED_KEYS = ["tasks", "journal", "ideas", "stocks", "brief"];
+const ALLOWED_KEYS = ["tasks", "journal", "ideas", "stocks", "brief", "deletedTaskIds", "deletedIdeaIds"];
 
 // Two devices can each hold a version of this data that the other has never
 // seen (e.g. reminders added on a phone that a rarely-opened desktop tab
@@ -9,11 +9,13 @@ const ALLOWED_KEYS = ["tasks", "journal", "ideas", "stocks", "brief"];
 // had that it didn't. Merging instead means neither side's data disappears
 // just because the other device saved more recently.
 //
-// Trade-off: a task/idea deleted on one device can reappear if another
-// device still has a local copy and syncs afterward, since this merges by
-// union rather than tracking deletions explicitly. That's an intentional
-// choice — an occasionally-resurrected deleted item is a far smaller
-// problem than silently losing a week of real data.
+// A pure union merge has no way to represent "this was deleted" — an id
+// missing from an incoming payload just looks like "this device hasn't
+// heard about it yet," not "this device removed it." So deletions are
+// tracked as their own small id lists (deletedTaskIds / deletedIdeaIds,
+// merged the same union way as everything else) and the client is
+// responsible for filtering anything in those lists out of the merged
+// tasks/ideas after fetching both — see reconcileDeletions() in app.js.
 function mergeSyncValue(key, existing, incoming) {
   if (existing == null) return incoming;
   if (incoming == null) return existing;
@@ -29,7 +31,7 @@ function mergeSyncValue(key, existing, incoming) {
     return { ...existing, ...incoming };
   }
 
-  if (key === "stocks") {
+  if (key === "stocks" || key === "deletedTaskIds" || key === "deletedIdeaIds") {
     return [...new Set([...existing, ...incoming])];
   }
 

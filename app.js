@@ -435,8 +435,58 @@ function updateTask(id, { title, category, priority, due, notes, estimateMinutes
   render();
 }
 
+const DELETED_TASK_IDS_KEY = "lifeDashboard.deletedTaskIds.v1";
+const DELETED_IDEA_IDS_KEY = "lifeDashboard.deletedIdeaIds.v1";
+
+function loadDeletedIds(storageKey) {
+  try {
+    return JSON.parse(localStorage.getItem(storageKey) || "[]");
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveDeletedIds(storageKey, syncKey, ids) {
+  localStorage.setItem(storageKey, JSON.stringify(ids));
+  syncToServer(syncKey, ids);
+}
+
+function recordDeletedId(storageKey, syncKey, id) {
+  const ids = loadDeletedIds(storageKey);
+  if (!ids.includes(id)) {
+    ids.push(id);
+    saveDeletedIds(storageKey, syncKey, ids);
+  }
+}
+
+function unrecordDeletedId(storageKey, syncKey, id) {
+  const ids = loadDeletedIds(storageKey);
+  if (ids.includes(id)) {
+    saveDeletedIds(storageKey, syncKey, ids.filter((x) => x !== id));
+  }
+}
+
+// A merged sync can bring back a task/idea another device still had locally
+// when this device deleted it (the merge is a union with no built-in concept
+// of "removed" — see api/sync/[key].js) — so after any tasks/ideas update
+// from the server, strip out anything this device knows it deleted.
+function reconcileDeletions() {
+  const deletedTaskIds = loadDeletedIds(DELETED_TASK_IDS_KEY);
+  if (deletedTaskIds.length) {
+    const before = tasks.length;
+    tasks = tasks.filter((t) => !deletedTaskIds.includes(t.id));
+    if (tasks.length !== before) localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+  const deletedIdeaIds = loadDeletedIds(DELETED_IDEA_IDS_KEY);
+  if (deletedIdeaIds.length) {
+    const remainingIdeas = loadIdeas().filter((i) => !deletedIdeaIds.includes(i.id));
+    localStorage.setItem(IDEAS_KEY, JSON.stringify(remainingIdeas));
+  }
+}
+
 function deleteTask(id) {
   tasks = tasks.filter((x) => x.id !== id);
+  recordDeletedId(DELETED_TASK_IDS_KEY, "deletedTaskIds", id);
   saveTasks(tasks);
   render();
 }
@@ -447,6 +497,7 @@ function requestDeleteTask(id) {
   deleteTask(id);
   showToast(`Deleted "${task.title}"`, () => {
     tasks.push(task);
+    unrecordDeletedId(DELETED_TASK_IDS_KEY, "deletedTaskIds", id);
     saveTasks(tasks);
     render();
   });
@@ -2450,6 +2501,7 @@ function renderIdeaItem(idea) {
 
   node.querySelector(".idea-delete").addEventListener("click", () => {
     saveIdeasList(loadIdeas().filter((i) => i.id !== idea.id));
+    recordDeletedId(DELETED_IDEA_IDS_KEY, "deletedIdeaIds", idea.id);
     node.remove();
     if (loadIdeas().length === 0) ideaHint.hidden = false;
   });
@@ -2517,7 +2569,13 @@ renderIdeas();
 
 render();
 
+// deletedTaskIds/deletedIdeaIds are listed first deliberately: hydrateFromServer
+// processes results in this object's key order, and tasks/ideas reconciliation
+// (in applySyncedValue) needs the deleted-id lists already written to
+// localStorage by the time it runs, not still pending later in the same pass.
 const SYNC_KEYS = {
+  deletedTaskIds: DELETED_TASK_IDS_KEY,
+  deletedIdeaIds: DELETED_IDEA_IDS_KEY,
   tasks: STORAGE_KEY,
   journal: JOURNAL_KEY,
   ideas: IDEAS_KEY,
@@ -2530,8 +2588,10 @@ function applySyncedValue(serverKey, value) {
   localStorage.setItem(localKey, JSON.stringify(value));
   if (serverKey === "tasks") {
     tasks = value;
+    reconcileDeletions();
     render();
   } else if (serverKey === "ideas") {
+    reconcileDeletions();
     renderIdeas();
   } else if (serverKey === "journal") {
     initJournal();
