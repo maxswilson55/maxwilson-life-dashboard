@@ -437,6 +437,7 @@ function updateTask(id, { title, category, priority, due, notes, estimateMinutes
 
 const DELETED_TASK_IDS_KEY = "lifeDashboard.deletedTaskIds.v1";
 const DELETED_IDEA_IDS_KEY = "lifeDashboard.deletedIdeaIds.v1";
+const DELETED_CHAT_LINK_IDS_KEY = "lifeDashboard.deletedChatLinkIds.v1";
 
 function loadDeletedIds(storageKey) {
   try {
@@ -481,6 +482,11 @@ function reconcileDeletions() {
   if (deletedIdeaIds.length) {
     const remainingIdeas = loadIdeas().filter((i) => !deletedIdeaIds.includes(i.id));
     localStorage.setItem(IDEAS_KEY, JSON.stringify(remainingIdeas));
+  }
+  const deletedChatLinkIds = loadDeletedIds(DELETED_CHAT_LINK_IDS_KEY);
+  if (deletedChatLinkIds.length) {
+    const remainingChatLinks = loadChatLinks().filter((l) => !deletedChatLinkIds.includes(l.id));
+    localStorage.setItem(CHAT_LINKS_KEY, JSON.stringify(remainingChatLinks));
   }
 }
 
@@ -890,6 +896,7 @@ function render() {
     .sort((a, b) => (a.waitingSince || 0) - (b.waitingSince || 0));
   renderWaitingSection(waitingTasks);
   renderRemindersSection(activeReminders);
+  renderChatLinks();
 
   renderStats(active, todayAndOverdue, completed);
   renderHero(todayAndOverdue, upcoming, rankedBacklog);
@@ -2587,6 +2594,77 @@ async function submitIdea() {
 ideaSubmitBtn.addEventListener("click", submitIdea);
 renderIdeas();
 
+const CHAT_LINKS_KEY = "lifeDashboard.chatLinks.v1";
+
+function loadChatLinks() {
+  try {
+    return JSON.parse(localStorage.getItem(CHAT_LINKS_KEY) || "[]");
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveChatLinksList(links) {
+  localStorage.setItem(CHAT_LINKS_KEY, JSON.stringify(links));
+  syncToServer("chatLinks", links);
+}
+
+const chatLinkTemplate = document.getElementById("chatlink-item-template");
+const chatLinkTitleInput = document.getElementById("chatlink-title-input");
+const chatLinkUrlInput = document.getElementById("chatlink-url-input");
+const chatLinkCategorySelect = document.getElementById("chatlink-category-select");
+const chatLinkSubmitBtn = document.getElementById("chatlink-submit-btn");
+const chatLinkList = document.getElementById("chatlink-list");
+const chatLinkHint = document.getElementById("chatlink-hint");
+
+function renderChatLinkItem(link) {
+  const node = chatLinkTemplate.content.firstElementChild.cloneNode(true);
+
+  const badge = node.querySelector(".category-badge");
+  badge.textContent = `${CATEGORY_EMOJI[link.category]} ${link.category}`;
+  badge.classList.add(`category-${link.category}`);
+
+  node.querySelector(".chatlink-title").textContent = link.title;
+  node.querySelector(".chatlink-link").href = link.url;
+
+  node.querySelector(".chatlink-delete").addEventListener("click", () => {
+    saveChatLinksList(loadChatLinks().filter((l) => l.id !== link.id));
+    recordDeletedId(DELETED_CHAT_LINK_IDS_KEY, "deletedChatLinkIds", link.id);
+    node.remove();
+    renderChatLinks();
+  });
+
+  return node;
+}
+
+function renderChatLinks() {
+  const links = loadChatLinks().filter((l) => scope === "all" || l.category === scope);
+  chatLinkList.innerHTML = "";
+  if (links.length === 0) {
+    chatLinkHint.hidden = false;
+  } else {
+    chatLinkHint.hidden = true;
+    links.forEach((link) => chatLinkList.appendChild(renderChatLinkItem(link)));
+  }
+}
+
+function submitChatLink() {
+  const title = chatLinkTitleInput.value.trim();
+  const url = chatLinkUrlInput.value.trim();
+  const category = chatLinkCategorySelect.value;
+  if (!title || !url) return;
+
+  const links = loadChatLinks();
+  links.unshift({ id: makeId(), title, url, category, createdAt: Date.now() });
+  saveChatLinksList(links);
+
+  chatLinkTitleInput.value = "";
+  chatLinkUrlInput.value = "";
+  renderChatLinks();
+}
+
+chatLinkSubmitBtn.addEventListener("click", submitChatLink);
+
 render();
 
 // deletedTaskIds/deletedIdeaIds are listed first deliberately: hydrateFromServer
@@ -2596,9 +2674,11 @@ render();
 const SYNC_KEYS = {
   deletedTaskIds: DELETED_TASK_IDS_KEY,
   deletedIdeaIds: DELETED_IDEA_IDS_KEY,
+  deletedChatLinkIds: DELETED_CHAT_LINK_IDS_KEY,
   tasks: STORAGE_KEY,
   journal: JOURNAL_KEY,
   ideas: IDEAS_KEY,
+  chatLinks: CHAT_LINKS_KEY,
   stocks: STOCKS_KEY,
 };
 
@@ -2630,6 +2710,11 @@ function applySyncedValue(serverKey, value) {
     localStorage.setItem(localKey, JSON.stringify(merged));
     reconcileDeletions();
     renderIdeas();
+  } else if (serverKey === "chatLinks") {
+    const merged = mergeArraysById(loadChatLinks(), value);
+    localStorage.setItem(localKey, JSON.stringify(merged));
+    reconcileDeletions();
+    renderChatLinks();
   } else if (serverKey === "journal") {
     const merged = { ...loadJournal(), ...value };
     localStorage.setItem(localKey, JSON.stringify(merged));

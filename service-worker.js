@@ -1,4 +1,4 @@
-const CACHE_NAME = "life-dashboard-v46";
+const CACHE_NAME = "life-dashboard-v47";
 const ASSETS = [
   "./",
   "./index.html",

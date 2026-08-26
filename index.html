@@ -230,6 +230,24 @@
       <p class="empty-hint" id="idea-hint">Nothing saved yet.</p>
       <ul class="task-list" id="idea-list"></ul>
     </section>
+
+    <section class="gmail-section" id="chatlinks-section">
+      <div class="gmail-header">
+        <h2>🔗 Chat Links</h2>
+      </div>
+      <input type="text" id="chatlink-title-input" class="journal-textarea idea-url-input" placeholder="What's this chat about?" />
+      <input type="text" id="chatlink-url-input" class="journal-textarea idea-url-input" placeholder="Paste the ChatGPT share link" />
+      <div class="journal-actions">
+        <select id="chatlink-category-select">
+          <option value="personal">🏡 Personal</option>
+          <option value="health">🩺 Health</option>
+          <option value="work">💼 Work</option>
+        </select>
+        <button type="button" id="chatlink-submit-btn" class="journal-submit-btn">Save link</button>
+      </div>
+      <p class="empty-hint" id="chatlink-hint">No chat links saved for this view yet.</p>
+      <ul class="task-list" id="chatlink-list"></ul>
+    </section>
    </div>
 
    <aside class="sidebar">
@@ -410,6 +428,21 @@
         </div>
       </div>
       <button class="idea-delete" type="button" title="Delete" aria-label="Delete idea">×</button>
+    </li>
+  </template>
+
+  <template id="chatlink-item-template">
+    <li class="task idea-item">
+      <div class="task-body">
+        <div class="task-title-row">
+          <span class="category-badge"></span>
+          <span class="task-title chatlink-title"></span>
+        </div>
+        <div class="task-meta">
+          <a class="gmail-open-link chatlink-link" target="_blank" rel="noopener">Open chat</a>
+        </div>
+      </div>
+      <button class="chatlink-delete" type="button" title="Delete" aria-label="Delete chat link">×</button>
     </li>
   </template>
 

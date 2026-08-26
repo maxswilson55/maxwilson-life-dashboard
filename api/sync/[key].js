@@ -1,6 +1,6 @@
 import { kvGet, kvSet } from "../_lib/store.js";
 
-const ALLOWED_KEYS = ["tasks", "journal", "ideas", "stocks", "brief", "deletedTaskIds", "deletedIdeaIds"];
+const ALLOWED_KEYS = ["tasks", "journal", "ideas", "chatLinks", "stocks", "brief", "deletedTaskIds", "deletedIdeaIds", "deletedChatLinkIds"];
 
 // Two devices can each hold a version of this data that the other has never
 // seen (e.g. reminders added on a phone that a rarely-opened desktop tab
@@ -20,7 +20,7 @@ function mergeSyncValue(key, existing, incoming) {
   if (existing == null) return incoming;
   if (incoming == null) return existing;
 
-  if (key === "tasks" || key === "ideas") {
+  if (key === "tasks" || key === "ideas" || key === "chatLinks") {
     const byId = new Map();
     for (const item of existing) if (item && item.id) byId.set(item.id, item);
     for (const item of incoming) if (item && item.id) byId.set(item.id, item);
@@ -31,7 +31,7 @@ function mergeSyncValue(key, existing, incoming) {
     return { ...existing, ...incoming };
   }
 
-  if (key === "stocks" || key === "deletedTaskIds" || key === "deletedIdeaIds") {
+  if (key === "stocks" || key === "deletedTaskIds" || key === "deletedIdeaIds" || key === "deletedChatLinkIds") {
     return [...new Set([...existing, ...incoming])];
   }
 

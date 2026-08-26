@@ -555,7 +555,8 @@ body { padding-bottom: 3rem; }
 #task-form select,
 #task-form input[type="date"],
 #task-form input[type="time"],
-#task-form input[type="number"] {
+#task-form input[type="number"],
+#chatlinks-section select {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 6px;
