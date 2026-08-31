@@ -1642,10 +1642,21 @@ async function loadGmailSuggestions() {
       visible.forEach((item) => gmailList.appendChild(renderGmailItem(item)));
     }
   } catch (err) {
+    // A non-401 failure here (network hiccup, or a Google-side token that's
+    // gone stale even though our cookie still exists) used to leave both the
+    // full section AND the "Connect Gmail" button permanently hidden — the
+    // only two code paths that reveal them are the success case above and
+    // the explicit 401 case, neither of which runs here. Treat it as
+    // "connected" UI-wise (the cookie IS there) so the section — and its
+    // Refresh button — are at least visible and retryable, instead of the
+    // integration silently vanishing with no way to get back to it.
     console.error("Gmail suggestions failed", err);
-    gmailHint.textContent = "Couldn't reach Gmail right now. Try refreshing.";
+    gmailHint.textContent = "Couldn't reach Gmail right now. Try refreshing, or reconnect if that keeps happening.";
     gmailHint.hidden = false;
     gmailRefreshBtn.hidden = false;
+    gmailConnectBtn.hidden = false;
+    gmailConnectBtn.textContent = "Reconnect Gmail";
+    setConnectorState("gmail", true);
   }
 }
 
@@ -1866,10 +1877,15 @@ async function loadCalendarEvents() {
       });
     }
   } catch (err) {
+    // Same fix as the Gmail path above: a non-401 failure here used to leave
+    // the section AND the "Connect Calendar" button both permanently hidden.
     console.error("Calendar events failed", err);
-    calendarHint.textContent = "Couldn't reach Calendar right now. Try refreshing.";
+    calendarHint.textContent = "Couldn't reach Calendar right now. Try refreshing, or reconnect if that keeps happening.";
     calendarHint.hidden = false;
     calendarRefreshBtn.hidden = false;
+    calendarConnectBtn.hidden = false;
+    calendarConnectBtn.textContent = "Reconnect Calendar";
+    setConnectorState("calendar", true);
   }
 }
 
