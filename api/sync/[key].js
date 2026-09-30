@@ -1,6 +1,6 @@
 import { kvGet, kvSet } from "../_lib/store.js";
 
-const ALLOWED_KEYS = ["tasks", "journal", "ideas", "chatLinks", "stocks", "brief", "deletedTaskIds", "deletedIdeaIds", "deletedChatLinkIds"];
+const ALLOWED_KEYS = ["tasks", "journal", "dailyTodo", "ideas", "chatLinks", "stocks", "brief", "deletedTaskIds", "deletedIdeaIds", "deletedChatLinkIds"];
 
 // Two devices can each hold a version of this data that the other has never
 // seen (e.g. reminders added on a phone that a rarely-opened desktop tab
@@ -27,7 +27,7 @@ function mergeSyncValue(key, existing, incoming) {
     return [...byId.values()];
   }
 
-  if (key === "journal") {
+  if (key === "journal" || key === "dailyTodo") {
     return { ...existing, ...incoming };
   }
 

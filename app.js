@@ -2132,6 +2132,50 @@ function saveJournalEntry(dateISO, entry) {
   syncToServer("journal", all);
 }
 
+// Deliberately dumb compared to the Daily Check-in above: no AI processing,
+// no mood tracking, no task extraction. Just a plain notepad for the day —
+// Max's own words were "get rid of everything in my head onto a piece of
+// paper," so any structure here would work against the point.
+const DAILY_TODO_KEY = "lifeDashboard.dailyTodo.v1";
+
+function loadDailyTodo() {
+  try {
+    return JSON.parse(localStorage.getItem(DAILY_TODO_KEY) || "{}");
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveDailyTodoEntry(dateISO, text) {
+  const all = loadDailyTodo();
+  if (text) all[dateISO] = text;
+  else delete all[dateISO];
+  localStorage.setItem(DAILY_TODO_KEY, JSON.stringify(all));
+  syncToServer("dailyTodo", all);
+}
+
+const dailyTodoTextarea = document.getElementById("daily-todo-textarea");
+const dailyTodoStatus = document.getElementById("daily-todo-status");
+
+function initDailyTodo() {
+  dailyTodoTextarea.value = loadDailyTodo()[todayISO()] || "";
+}
+
+let dailyTodoSaveTimer = null;
+dailyTodoTextarea.addEventListener("input", () => {
+  dailyTodoStatus.textContent = "Saving…";
+  clearTimeout(dailyTodoSaveTimer);
+  dailyTodoSaveTimer = setTimeout(() => {
+    saveDailyTodoEntry(todayISO(), dailyTodoTextarea.value.trim());
+    dailyTodoStatus.textContent = "Saved";
+    setTimeout(() => {
+      dailyTodoStatus.textContent = "";
+    }, 1500);
+  }, 600);
+});
+
+initDailyTodo();
+
 const journalInput = document.getElementById("journal-input");
 const journalSubmitBtn = document.getElementById("journal-submit-btn");
 const journalStatus = document.getElementById("journal-status");
@@ -2693,6 +2737,7 @@ const SYNC_KEYS = {
   deletedChatLinkIds: DELETED_CHAT_LINK_IDS_KEY,
   tasks: STORAGE_KEY,
   journal: JOURNAL_KEY,
+  dailyTodo: DAILY_TODO_KEY,
   ideas: IDEAS_KEY,
   chatLinks: CHAT_LINKS_KEY,
   stocks: STOCKS_KEY,
@@ -2735,6 +2780,10 @@ function applySyncedValue(serverKey, value) {
     const merged = { ...loadJournal(), ...value };
     localStorage.setItem(localKey, JSON.stringify(merged));
     initJournal();
+  } else if (serverKey === "dailyTodo") {
+    const merged = { ...loadDailyTodo(), ...value };
+    localStorage.setItem(localKey, JSON.stringify(merged));
+    initDailyTodo();
   } else if (serverKey === "stocks") {
     const merged = [...new Set([...loadTickers(), ...value])];
     localStorage.setItem(localKey, JSON.stringify(merged));
