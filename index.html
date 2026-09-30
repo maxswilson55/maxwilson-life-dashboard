@@ -58,9 +58,9 @@
       <div class="gmail-header">
         <h2>📝 Daily To-Do</h2>
       </div>
-      <p class="empty-hint" id="daily-todo-hint">Whatever's in your head for today — no structure, no pressure. Just type.</p>
-      <textarea id="daily-todo-textarea" class="journal-textarea" rows="6" placeholder="e.g. call the bank, finish the report, pick up dry cleaning..."></textarea>
-      <p class="journal-status" id="daily-todo-status"></p>
+      <p class="empty-hint" id="daily-todo-hint">A quick scratch checklist for today — kept separate from your tracked tasks below, so nothing gets counted twice.</p>
+      <input type="text" id="daily-todo-input" class="journal-textarea idea-url-input" placeholder="Type something and press Enter…" autocomplete="off" />
+      <ul class="task-list" id="daily-todo-list"></ul>
     </section>
 
     <section class="quick-add">
@@ -405,6 +405,19 @@
       <span class="stock-price"></span>
       <span class="stock-change"></span>
       <button class="stock-remove" type="button" title="Remove" aria-label="Remove ticker">×</button>
+    </li>
+  </template>
+
+  <template id="daily-todo-item-template">
+    <li class="task">
+      <label class="task-check">
+        <input type="checkbox" />
+        <span class="checkmark"></span>
+      </label>
+      <div class="task-body">
+        <span class="task-title daily-todo-item-title"></span>
+      </div>
+      <button class="daily-todo-item-delete" type="button" title="Delete" aria-label="Delete item">×</button>
     </li>
   </template>
 

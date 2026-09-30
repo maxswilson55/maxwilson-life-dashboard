@@ -2133,9 +2133,14 @@ function saveJournalEntry(dateISO, entry) {
 }
 
 // Deliberately dumb compared to the Daily Check-in above: no AI processing,
-// no mood tracking, no task extraction. Just a plain notepad for the day —
-// Max's own words were "get rid of everything in my head onto a piece of
-// paper," so any structure here would work against the point.
+// no mood tracking, no task extraction. Just a scratch checklist for the
+// day — Max's own words were "get rid of everything in my head onto a piece
+// of paper." Each line is its own tickable item (a plain textarea made
+// Enter a no-op for adding a new item, which was the actual bug report).
+// Deliberately never touches render()/renderStats()/the heatmap/weekly
+// review/AI brief anywhere else in this file, so ticking something off here
+// can never double-count against the real task list — Max was explicit he
+// doesn't want the two systems' counts to overlap.
 const DAILY_TODO_KEY = "lifeDashboard.dailyTodo.v1";
 
 function loadDailyTodo() {
@@ -2146,32 +2151,70 @@ function loadDailyTodo() {
   }
 }
 
-function saveDailyTodoEntry(dateISO, text) {
+// The first version of this feature stored a single plain-text string per
+// date. Migrate any of that in place to a one-item list the first time
+// it's read, so nothing typed before this rewrite gets lost.
+function loadTodayDailyTodoItems() {
+  const existing = loadDailyTodo()[todayISO()];
+  if (Array.isArray(existing)) return existing;
+  if (typeof existing === "string" && existing.trim()) {
+    return [{ id: makeId(), text: existing.trim(), done: false }];
+  }
+  return [];
+}
+
+function saveDailyTodoItems(items) {
   const all = loadDailyTodo();
-  if (text) all[dateISO] = text;
-  else delete all[dateISO];
+  all[todayISO()] = items;
   localStorage.setItem(DAILY_TODO_KEY, JSON.stringify(all));
   syncToServer("dailyTodo", all);
 }
 
-const dailyTodoTextarea = document.getElementById("daily-todo-textarea");
-const dailyTodoStatus = document.getElementById("daily-todo-status");
+const dailyTodoInput = document.getElementById("daily-todo-input");
+const dailyTodoList = document.getElementById("daily-todo-list");
+const dailyTodoTemplate = document.getElementById("daily-todo-item-template");
 
-function initDailyTodo() {
-  dailyTodoTextarea.value = loadDailyTodo()[todayISO()] || "";
+function renderDailyTodoItem(item, items) {
+  const node = dailyTodoTemplate.content.firstElementChild.cloneNode(true);
+  node.classList.toggle("is-done", item.done);
+  const checkbox = node.querySelector("input[type=checkbox]");
+  checkbox.checked = item.done;
+  node.querySelector(".daily-todo-item-title").textContent = item.text;
+
+  checkbox.addEventListener("change", () => {
+    item.done = checkbox.checked;
+    node.classList.toggle("is-done", item.done);
+    saveDailyTodoItems(items);
+  });
+
+  node.querySelector(".daily-todo-item-delete").addEventListener("click", () => {
+    const next = items.filter((i) => i.id !== item.id);
+    renderDailyTodoList(next);
+    saveDailyTodoItems(next);
+  });
+
+  return node;
 }
 
-let dailyTodoSaveTimer = null;
-dailyTodoTextarea.addEventListener("input", () => {
-  dailyTodoStatus.textContent = "Saving…";
-  clearTimeout(dailyTodoSaveTimer);
-  dailyTodoSaveTimer = setTimeout(() => {
-    saveDailyTodoEntry(todayISO(), dailyTodoTextarea.value.trim());
-    dailyTodoStatus.textContent = "Saved";
-    setTimeout(() => {
-      dailyTodoStatus.textContent = "";
-    }, 1500);
-  }, 600);
+function renderDailyTodoList(items) {
+  dailyTodoList.innerHTML = "";
+  items.forEach((item) => dailyTodoList.appendChild(renderDailyTodoItem(item, items)));
+}
+
+function initDailyTodo() {
+  renderDailyTodoList(loadTodayDailyTodoItems());
+}
+
+dailyTodoInput.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  const text = dailyTodoInput.value.trim();
+  if (!text) return;
+  const items = loadTodayDailyTodoItems();
+  items.push({ id: makeId(), text, done: false });
+  renderDailyTodoList(items);
+  saveDailyTodoItems(items);
+  dailyTodoInput.value = "";
 });
 
 initDailyTodo();
