@@ -903,15 +903,25 @@ function render() {
   renderHeatmap();
 }
 
+// Reminders are intentionally lighter-weight than the Task board (no
+// drag-and-drop, no separate columns) — but with 30+ of them accumulating,
+// a flat date-sorted list gave no sense of what's actually urgent. Grouping
+// by Overdue/Today/Upcoming/No date, reusing the same day-header look as
+// Calendar, gets that back without turning Reminders into a second task
+// board.
 function renderRemindersSection(reminders) {
   const listEl = document.getElementById("reminders-list");
   const hintEl = document.getElementById("reminders-hint");
   const overdueBadge = document.getElementById("reminders-overdue-badge");
 
   const today = todayISO();
-  const overdueCount = reminders.filter((t) => t.due && t.due < today).length;
-  if (overdueCount > 0) {
-    overdueBadge.textContent = `${overdueCount} overdue`;
+  const overdue = reminders.filter((t) => t.due && t.due < today);
+  const dueToday = reminders.filter((t) => t.due && t.due === today);
+  const upcoming = reminders.filter((t) => t.due && t.due > today);
+  const noDate = reminders.filter((t) => !t.due);
+
+  if (overdue.length > 0) {
+    overdueBadge.textContent = `${overdue.length} overdue`;
     overdueBadge.hidden = false;
   } else {
     overdueBadge.hidden = true;
@@ -923,7 +933,16 @@ function renderRemindersSection(reminders) {
     return;
   }
   hintEl.hidden = true;
-  reminders.forEach((t) => listEl.appendChild(renderTaskItem(t)));
+
+  const appendGroup = (label, items) => {
+    if (items.length === 0) return;
+    listEl.appendChild(renderCalendarDayHeader(label));
+    items.forEach((t) => listEl.appendChild(renderTaskItem(t)));
+  };
+  appendGroup("Overdue", overdue);
+  appendGroup("Today", dueToday);
+  appendGroup("Upcoming", upcoming);
+  appendGroup("No date", noDate);
 }
 
 function renderWaitingSection(waitingTasks) {
@@ -2629,6 +2648,8 @@ const ideaSubmitBtn = document.getElementById("idea-submit-btn");
 const ideaStatus = document.getElementById("idea-status");
 const ideaList = document.getElementById("idea-list");
 const ideaHint = document.getElementById("idea-hint");
+const ideaSearchInput = document.getElementById("idea-search-input");
+const IDEA_SEARCH_THRESHOLD = 6;
 
 function renderIdeaItem(idea) {
   const node = ideaTemplate.content.firstElementChild.cloneNode(true);
@@ -2659,16 +2680,33 @@ function renderIdeaItem(idea) {
   return node;
 }
 
+// A handful of saved ideas needs no search box at all; past ~6 it's worth
+// one, since this list only ever grows (no archive/review-done concept) and
+// scrolling through dozens of old Instagram saves to find one gets old fast.
 function renderIdeas() {
   const ideas = loadIdeas();
+  ideaSearchInput.hidden = ideas.length <= IDEA_SEARCH_THRESHOLD;
+
+  const query = ideaSearchInput.value.trim().toLowerCase();
+  const filtered = query
+    ? ideas.filter((idea) =>
+        [idea.title, idea.note, idea.source, IDEA_CATEGORY_LABELS[idea.category]]
+          .filter(Boolean)
+          .some((field) => field.toLowerCase().includes(query))
+      )
+    : ideas;
+
   ideaList.innerHTML = "";
-  if (ideas.length === 0) {
+  if (filtered.length === 0) {
+    ideaHint.textContent = query ? "No ideas match your search." : "Nothing saved yet.";
     ideaHint.hidden = false;
   } else {
     ideaHint.hidden = true;
-    ideas.forEach((idea) => ideaList.appendChild(renderIdeaItem(idea)));
+    filtered.forEach((idea) => ideaList.appendChild(renderIdeaItem(idea)));
   }
 }
+
+ideaSearchInput.addEventListener("input", renderIdeas);
 
 async function submitIdea() {
   const url = ideaUrlInput.value.trim();
@@ -2739,6 +2777,8 @@ const chatLinkCategorySelect = document.getElementById("chatlink-category-select
 const chatLinkSubmitBtn = document.getElementById("chatlink-submit-btn");
 const chatLinkList = document.getElementById("chatlink-list");
 const chatLinkHint = document.getElementById("chatlink-hint");
+const chatLinkSearchInput = document.getElementById("chatlink-search-input");
+const CHAT_LINK_SEARCH_THRESHOLD = 6;
 
 function renderChatLinkItem(link) {
   const node = chatLinkTemplate.content.firstElementChild.cloneNode(true);
@@ -2762,14 +2802,22 @@ function renderChatLinkItem(link) {
 
 function renderChatLinks() {
   const links = loadChatLinks().filter((l) => scope === "all" || l.category === scope);
+  chatLinkSearchInput.hidden = links.length <= CHAT_LINK_SEARCH_THRESHOLD;
+
+  const query = chatLinkSearchInput.value.trim().toLowerCase();
+  const filtered = query ? links.filter((l) => l.title.toLowerCase().includes(query)) : links;
+
   chatLinkList.innerHTML = "";
-  if (links.length === 0) {
+  if (filtered.length === 0) {
+    chatLinkHint.textContent = query ? "No chat links match your search." : "No chat links saved for this view yet.";
     chatLinkHint.hidden = false;
   } else {
     chatLinkHint.hidden = true;
-    links.forEach((link) => chatLinkList.appendChild(renderChatLinkItem(link)));
+    filtered.forEach((link) => chatLinkList.appendChild(renderChatLinkItem(link)));
   }
 }
+
+chatLinkSearchInput.addEventListener("input", renderChatLinks);
 
 function submitChatLink() {
   const title = chatLinkTitleInput.value.trim();
