@@ -906,6 +906,17 @@ function render() {
 function renderRemindersSection(reminders) {
   const listEl = document.getElementById("reminders-list");
   const hintEl = document.getElementById("reminders-hint");
+  const overdueBadge = document.getElementById("reminders-overdue-badge");
+
+  const today = todayISO();
+  const overdueCount = reminders.filter((t) => t.due && t.due < today).length;
+  if (overdueCount > 0) {
+    overdueBadge.textContent = `${overdueCount} overdue`;
+    overdueBadge.hidden = false;
+  } else {
+    overdueBadge.hidden = true;
+  }
+
   listEl.innerHTML = "";
   if (reminders.length === 0) {
     hintEl.hidden = false;
@@ -2490,9 +2501,17 @@ function renderBrief(text) {
 
 function buildBriefStats() {
   const today = todayISO();
-  const activeTasks = tasks.filter((t) => !t.done);
-  const dueTodayTasks = activeTasks.filter((t) => t.due && t.due <= today);
+  // Reminders are deliberately excluded from every task-board stat
+  // elsewhere in the app (see `active` in render()) — this was missed here,
+  // so the brief was counting overdue Reminders as "due today" Tasks, and
+  // `<= today` meant anything overdue got double-counted as due-today too.
+  const activeTasks = tasks.filter((t) => !t.done && t.itemType !== "reminder");
+  const dueTodayTasks = activeTasks.filter((t) => t.due && t.due === today);
   const overdueCount = activeTasks.filter((t) => t.due && t.due < today).length;
+
+  const remindersOverdueCount = tasks.filter(
+    (t) => !t.done && t.itemType === "reminder" && t.due && t.due < today
+  ).length;
 
   const waitingStale = activeTasks
     .filter((t) => t.waitingOn && waitingDays(t) >= WAITING_ESCALATE_DAYS)
@@ -2522,6 +2541,7 @@ function buildBriefStats() {
     dueTodayCount: dueTodayTasks.length,
     dueTodayTitles: dueTodayTasks.slice(0, 3).map((t) => t.title),
     overdueCount,
+    remindersOverdueCount,
     openCount: activeTasks.length,
     waitingStale: waitingStale.slice(0, 3),
     stalledChains: stalledChains.slice(0, 3),

@@ -6,6 +6,11 @@ function buildBriefPrompt(stats) {
   lines.push(`Due today: ${stats.dueTodayCount} task(s)${stats.dueTodayTitles?.length ? ` — ${stats.dueTodayTitles.join("; ")}` : ""}`);
   lines.push(`Overdue: ${stats.overdueCount} task(s)`);
   lines.push(`Open tasks total: ${stats.openCount}`);
+  if (stats.remindersOverdueCount > 0) {
+    lines.push(
+      `Separately, ${stats.remindersOverdueCount} reminder(s) have gone past their date unactioned — these are NOT tasks, mention only briefly if at all`
+    );
+  }
   if (stats.waitingStale?.length) {
     lines.push(
       `Waiting on someone else, no movement in a while: ${stats.waitingStale

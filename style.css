@@ -1186,6 +1186,18 @@ body { padding-bottom: 3rem; }
 .priority-medium { color: var(--medium); background: var(--medium-bg); }
 .priority-low { color: var(--low); background: var(--low-bg); }
 
+.reminders-overdue-badge {
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.12rem 0.5rem;
+  border-radius: 5px;
+  color: var(--high);
+  background: var(--high-bg);
+  margin-left: 0.5rem;
+}
+
 .category-work { color: var(--work-text); background: var(--work-bg); }
 .category-personal { color: var(--personal-text); background: var(--personal-bg); }
 .category-health { color: var(--health-text); background: var(--health-bg); }
