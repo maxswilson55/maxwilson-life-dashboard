@@ -438,6 +438,7 @@ function updateTask(id, { title, category, priority, due, notes, estimateMinutes
 const DELETED_TASK_IDS_KEY = "lifeDashboard.deletedTaskIds.v1";
 const DELETED_IDEA_IDS_KEY = "lifeDashboard.deletedIdeaIds.v1";
 const DELETED_CHAT_LINK_IDS_KEY = "lifeDashboard.deletedChatLinkIds.v1";
+const DELETED_TICKERS_KEY = "lifeDashboard.deletedTickers.v1";
 
 function loadDeletedIds(storageKey) {
   try {
@@ -487,6 +488,11 @@ function reconcileDeletions() {
   if (deletedChatLinkIds.length) {
     const remainingChatLinks = loadChatLinks().filter((l) => !deletedChatLinkIds.includes(l.id));
     localStorage.setItem(CHAT_LINKS_KEY, JSON.stringify(remainingChatLinks));
+  }
+  const deletedTickers = loadDeletedIds(DELETED_TICKERS_KEY);
+  if (deletedTickers.length) {
+    const remainingTickers = loadTickers().filter((s) => !deletedTickers.includes(s));
+    localStorage.setItem(STOCKS_KEY, JSON.stringify(remainingTickers));
   }
 }
 
@@ -2028,12 +2034,14 @@ function renderStockItem(quote) {
   node.querySelector(".stock-remove").addEventListener("click", () => {
     const tickers = loadTickers().filter((s) => s !== quote.symbol);
     saveTickers(tickers);
+    recordDeletedId(DELETED_TICKERS_KEY, "deletedTickers", quote.symbol);
     node.remove();
     if (tickers.length === 0) {
       stocksHint.textContent = "Add a ticker to start tracking.";
       stocksHint.hidden = false;
     }
     showToast(`Removed "${quote.symbol}"`, () => {
+      unrecordDeletedId(DELETED_TICKERS_KEY, "deletedTickers", quote.symbol);
       const restored = loadTickers();
       if (!restored.includes(quote.symbol)) {
         restored.push(quote.symbol);
@@ -2879,6 +2887,7 @@ const SYNC_KEYS = {
   deletedTaskIds: DELETED_TASK_IDS_KEY,
   deletedIdeaIds: DELETED_IDEA_IDS_KEY,
   deletedChatLinkIds: DELETED_CHAT_LINK_IDS_KEY,
+  deletedTickers: DELETED_TICKERS_KEY,
   tasks: STORAGE_KEY,
   journal: JOURNAL_KEY,
   dailyTodo: DAILY_TODO_KEY,
@@ -2931,6 +2940,7 @@ function applySyncedValue(serverKey, value) {
   } else if (serverKey === "stocks") {
     const merged = [...new Set([...loadTickers(), ...value])];
     localStorage.setItem(localKey, JSON.stringify(merged));
+    reconcileDeletions();
     loadStockQuotes();
   } else {
     localStorage.setItem(localKey, JSON.stringify(value));
