@@ -1370,6 +1370,12 @@ body { padding-bottom: 3rem; }
   margin-top: 0.6rem;
 }
 
+.last-synced-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .cmdk-trigger-btn {
   border: 1px solid var(--border);
   background: var(--surface);

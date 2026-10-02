@@ -551,6 +551,38 @@ toastActionBtn.addEventListener("click", () => {
 
 let syncFailureToastAt = 0;
 
+// A quick trust signal, now that syncing happens silently in the
+// background (on open, every 3 minutes, and after every save) rather than
+// only via the visible manual Sync button — otherwise there's no way to
+// tell at a glance whether "background sync" is actually still working.
+const LAST_SYNCED_KEY = "lifeDashboard.lastSyncedAt.v1";
+const lastSyncedLabel = document.getElementById("last-synced-label");
+
+function renderLastSynced() {
+  const raw = localStorage.getItem(LAST_SYNCED_KEY);
+  if (!raw) {
+    lastSyncedLabel.hidden = true;
+    return;
+  }
+  const seconds = Math.floor((Date.now() - Number(raw)) / 1000);
+  let text;
+  if (seconds < 10) text = "Synced just now";
+  else if (seconds < 60) text = `Synced ${seconds}s ago`;
+  else if (seconds < 3600) text = `Synced ${Math.floor(seconds / 60)}m ago`;
+  else if (seconds < 86400) text = `Synced ${Math.floor(seconds / 3600)}h ago`;
+  else text = `Synced ${Math.floor(seconds / 86400)}d ago`;
+  lastSyncedLabel.textContent = text;
+  lastSyncedLabel.hidden = false;
+}
+
+function recordLastSynced() {
+  localStorage.setItem(LAST_SYNCED_KEY, String(Date.now()));
+  renderLastSynced();
+}
+
+renderLastSynced();
+setInterval(renderLastSynced, 30000);
+
 const SYNC_QUEUE_KEY = "lifeDashboard.syncQueue.v1";
 
 function loadSyncQueue() {
@@ -609,6 +641,7 @@ async function syncToServer(key, value) {
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
     clearQueuedSync(key);
+    recordLastSynced();
     // The server merges this save with whatever another device may have added
     // since our last hydrate, rather than blindly overwriting it — apply that
     // merged result back locally so this device doesn't sit stale until its
